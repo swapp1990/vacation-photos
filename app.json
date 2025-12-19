@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "HelloWorldiOS",
-    "slug": "HelloWorldiOS",
+    "name": "Vacation Photos",
+    "slug": "vacation-photos",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
