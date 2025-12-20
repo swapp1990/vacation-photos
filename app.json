@@ -13,7 +13,13 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.swapp1990.vacationphotos",
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "This app needs access to your photos to display and organize your vacation memories.",
+        "NSLocationWhenInUseUsageDescription": "This app needs your location to identify photos taken away from home.",
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -24,6 +30,12 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "bae687ee-1832-4ba2-a0d3-cc61d4feaffa"
+      }
+    },
+    "owner": "swapp1990"
   }
 }
