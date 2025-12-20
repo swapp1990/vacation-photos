@@ -4,13 +4,13 @@
     "slug": "vacation-photos",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/AppIcons/appstore.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "image": "./assets/vacation-splash.png",
+      "resizeMode": "cover",
+      "backgroundColor": "#4AC4F3"
     },
     "ios": {
       "supportsTablet": true,
@@ -23,7 +23,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/AppIcons/appstore.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true

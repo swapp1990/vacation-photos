@@ -1,24 +1,34 @@
 import { StatusBar } from 'expo-status-bar';
 import { useState, useEffect, useCallback } from 'react';
 import {
-  StyleSheet,
   Text,
   View,
   FlatList,
   Image,
   TouchableOpacity,
-  Dimensions,
   ActivityIndicator,
+  Dimensions,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
 import * as MediaLibrary from 'expo-media-library';
 import * as Location from 'expo-location';
 
-const MILES_FROM_HOME = 50;
-const KM_FROM_HOME = MILES_FROM_HOME * 1.60934;
+// Import reusable components and styles
+import { APITestModal, Screen } from './src/components';
+import styles, { imageSize } from './src/styles/appStyles';
+import {
+  loadCache,
+  saveCache,
+  extractPhotoMetadata,
+  extractClusterMetadata,
+  rebuildClusters,
+} from './src/utils/photoCache';
 
 const { width } = Dimensions.get('window');
-const imageSize = width / 3 - 4;
+
+const MILES_FROM_HOME = 50;
+const KM_FROM_HOME = MILES_FROM_HOME * 1.60934;
 
 function getDistanceKm(lat1, lon1, lat2, lon2) {
   const R = 6371;
@@ -214,15 +224,41 @@ export default function App() {
   const [endCursor, setEndCursor] = useState(null);
   const [hasMore, setHasMore] = useState(true);
   const [homeLocation, setHomeLocation] = useState(null);
+  const [showAPITest, setShowAPITest] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [newestPhotoTime, setNewestPhotoTime] = useState(null);
+  const [cacheLoaded, setCacheLoaded] = useState(false);
 
   useEffect(() => {
-    requestPermissions();
+    initializeApp();
   }, []);
 
-  const requestPermissions = async () => {
+  const initializeApp = async () => {
+    // First, try to load cached data
+    const cached = await loadCache();
+    if (cached && cached.photos && cached.clusters) {
+      console.log('Loaded from cache:', cached.photos.length, 'photos');
+      // Build photos lookup
+      const photosById = {};
+      cached.photos.forEach(p => { photosById[p.id] = p; });
+      // Rebuild clusters with full photo objects
+      const rebuiltClusters = rebuildClusters(cached.clusters, photosById);
+      setPhotos(cached.photos);
+      setClusters(rebuiltClusters);
+      setHomeLocation(cached.homeLocation);
+      setNewestPhotoTime(cached.newestPhotoTime);
+      setEndCursor(cached.endCursor);
+      setHasMore(cached.hasMore !== false);
+      setCacheLoaded(true);
+    }
+    // Then request permissions (will refresh if needed)
+    requestPermissions(cached);
+  };
+
+  const requestPermissions = async (cached) => {
     const { status: locationStatus } = await Location.requestForegroundPermissionsAsync();
-    let home = null;
-    if (locationStatus === 'granted') {
+    let home = homeLocation;
+    if (locationStatus === 'granted' && !home) {
       setLoadingProgress('Getting your location...');
       const location = await Location.getCurrentPositionAsync({});
       home = {
@@ -234,24 +270,32 @@ export default function App() {
 
     const { status: mediaStatus } = await MediaLibrary.requestPermissionsAsync();
     setHasPermission(mediaStatus === 'granted' && locationStatus === 'granted');
-    if (mediaStatus === 'granted' && locationStatus === 'granted' && home) {
-      loadPhotos(false, home);
+
+    // Only do full load if no cache exists
+    if (mediaStatus === 'granted' && locationStatus === 'granted' && home && !cached) {
+      loadPhotos('initial', home);
     }
   };
 
-  const loadPhotos = async (isLoadMore = false, home = homeLocation) => {
+  const loadPhotos = async (mode = 'initial', home = homeLocation) => {
+    // mode: 'initial' | 'refresh' | 'loadMore'
     if (!home) return;
+
+    const isLoadMore = mode === 'loadMore';
+    const isRefresh = mode === 'refresh';
 
     if (isLoadMore) {
       setLoadingMore(true);
+    } else if (isRefresh) {
+      setRefreshing(true);
     } else {
       setLoading(true);
     }
-    setLoadingProgress('Fetching photos...');
+    setLoadingProgress(isRefresh ? 'Checking for new photos...' : 'Fetching photos...');
 
     const queryOptions = {
       mediaType: 'photo',
-      first: 1000,
+      first: isRefresh ? 500 : 1000, // Smaller batch for refresh
       sortBy: ['creationTime'],
     };
 
@@ -262,8 +306,22 @@ export default function App() {
     const result = await MediaLibrary.getAssetsAsync(queryOptions);
     const { assets, endCursor: newCursor, hasNextPage } = result;
 
-    setEndCursor(newCursor);
-    setHasMore(hasNextPage);
+    // For refresh, only process photos newer than what we have
+    let assetsToProcess = assets;
+    if (isRefresh && newestPhotoTime) {
+      assetsToProcess = assets.filter(a => a.creationTime > newestPhotoTime);
+      if (assetsToProcess.length === 0) {
+        console.log('No new photos found');
+        setRefreshing(false);
+        return;
+      }
+      console.log(`Found ${assetsToProcess.length} new photos`);
+    }
+
+    if (!isRefresh) {
+      setEndCursor(newCursor);
+      setHasMore(hasNextPage);
+    }
 
     setLoadingProgress('Finding vacation photos...');
     const vacationPhotos = [];
@@ -271,7 +329,7 @@ export default function App() {
     let tooCloseCount = 0;
     let processedCount = 0;
 
-    for (const asset of assets) {
+    for (const asset of assetsToProcess) {
       processedCount++;
       try {
         const info = await MediaLibrary.getAssetInfoAsync(asset.id);
@@ -282,7 +340,6 @@ export default function App() {
           vacationPhotos.push({
             ...asset,
             location: null,
-            localUri: info.localUri,
             distanceFromHome: null,
           });
           continue;
@@ -303,26 +360,41 @@ export default function App() {
         vacationPhotos.push({
           ...asset,
           location: info.location,
-          localUri: info.localUri,
           distanceFromHome,
         });
       } catch (e) {
         console.log('Error processing photo:', e.message);
       }
-      if (vacationPhotos.length >= 200) break;
+      if (!isRefresh && vacationPhotos.length >= 200) break;
     }
 
     console.log(`Processed: ${processedCount}, No location: ${noLocationCount}, Too close (<${MILES_FROM_HOME}mi): ${tooCloseCount}, Vacation photos: ${vacationPhotos.length}`);
 
-    const allPhotos = isLoadMore ? [...photos, ...vacationPhotos] : vacationPhotos;
+    // Merge photos based on mode
+    let allPhotos;
+    if (isRefresh) {
+      // Prepend new photos to existing ones
+      allPhotos = [...vacationPhotos, ...photos];
+    } else if (isLoadMore) {
+      allPhotos = [...photos, ...vacationPhotos];
+    } else {
+      allPhotos = vacationPhotos;
+    }
     setPhotos(allPhotos);
+
+    // Track newest photo time for incremental refresh
+    if (allPhotos.length > 0) {
+      const newest = Math.max(...allPhotos.map(p => p.creationTime));
+      setNewestPhotoTime(newest);
+    }
 
     setLoadingProgress('Clustering vacations...');
     const clustered = clusterPhotos(allPhotos);
 
+    // Only geocode clusters that don't have location names yet
     setLoadingProgress('Getting location names...');
     for (const cluster of clustered) {
-      if (cluster.location && cluster.location.latitude != null) {
+      if (cluster.location && cluster.location.latitude != null && !cluster.locationName) {
         try {
           const results = await Location.reverseGeocodeAsync({
             latitude: Number(cluster.location.latitude),
@@ -331,7 +403,6 @@ export default function App() {
           console.log('Geocode results:', JSON.stringify(results));
           if (results && results.length > 0) {
             const place = results[0];
-            // Try multiple fields for location name
             const name = place.city || place.district || place.subregion || place.name;
             const region = place.region || place.administrativeArea;
             const country = place.country || place.isoCountryCode;
@@ -348,16 +419,34 @@ export default function App() {
 
     setClusters(clustered);
 
+    // Save to cache
+    const cacheData = {
+      photos: allPhotos.map(extractPhotoMetadata),
+      clusters: clustered.map(extractClusterMetadata),
+      homeLocation: home,
+      newestPhotoTime: Math.max(...allPhotos.map(p => p.creationTime)),
+      endCursor: newCursor,
+      hasMore: hasNextPage,
+    };
+    await saveCache(cacheData);
+    console.log('Saved to cache:', allPhotos.length, 'photos');
+
     if (isLoadMore) {
       setLoadingMore(false);
+    } else if (isRefresh) {
+      setRefreshing(false);
     } else {
       setLoading(false);
     }
   };
 
+  const onRefresh = useCallback(() => {
+    loadPhotos('refresh');
+  }, [photos, newestPhotoTime, homeLocation]);
+
   const loadMore = () => {
     if (!loadingMore && hasMore) {
-      loadPhotos(true);
+      loadPhotos('loadMore');
     }
   };
 
@@ -399,22 +488,13 @@ export default function App() {
 
   if (selectedImage) {
     return (
-      <SafeAreaProvider>
-        <SafeAreaView style={styles.fullscreenContainer} edges={['top', 'bottom']}>
-          <StatusBar style="light" />
-          <TouchableOpacity
-            style={styles.closeButton}
-            onPress={() => setSelectedImage(null)}
-          >
-            <Text style={styles.closeText}>Close</Text>
-          </TouchableOpacity>
-          <Image
-            source={{ uri: selectedImage }}
-            style={styles.fullImage}
-            resizeMode="contain"
-          />
-        </SafeAreaView>
-      </SafeAreaProvider>
+      <Screen.Fullscreen onClose={() => setSelectedImage(null)}>
+        <Image
+          source={{ uri: selectedImage }}
+          style={styles.fullImage}
+          resizeMode="contain"
+        />
+      </Screen.Fullscreen>
     );
   }
 
@@ -450,255 +530,86 @@ export default function App() {
     );
   }
 
+  if (loading && !cacheLoaded) {
+    return (
+      <View style={styles.splashContainer}>
+        <StatusBar style="light" />
+        <Image
+          source={require('./assets/vacation-splash.png')}
+          style={styles.splashImage}
+          resizeMode="cover"
+        />
+        <View style={styles.splashOverlay}>
+          <View style={styles.loadingBox}>
+            <ActivityIndicator size="large" color="#007AFF" />
+            <Text style={styles.splashLoadingText}>{loadingProgress}</Text>
+          </View>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <SafeAreaProvider>
       <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
         <StatusBar style="auto" />
         <View style={styles.header}>
-          <Text style={styles.title}>Vacation Photos</Text>
+          <Image
+            source={require('./assets/app-logo-transparent.png')}
+            style={styles.headerLogo}
+            resizeMode="contain"
+          />
           <Text style={styles.subtitle}>
             {clusters.length} trips · {photos.length} photos ({MILES_FROM_HOME}+ miles from home)
           </Text>
         </View>
-        {loading ? (
-          <View style={styles.centerContainer}>
-            <ActivityIndicator size="large" color="#007AFF" />
-            <Text style={styles.message}>{loadingProgress}</Text>
-          </View>
-        ) : (
-          <FlatList
-            key="clusters-list"
-            data={clusters}
-            renderItem={renderCluster}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={styles.clusterList}
-            ListFooterComponent={
-              hasMore ? (
-                <View style={styles.footerContainer}>
-                  <TouchableOpacity
-                    style={[styles.loadMoreButton, loadingMore && styles.loadMoreButtonDisabled]}
-                    onPress={loadMore}
-                    disabled={loadingMore}
-                  >
-                    {loadingMore ? (
-                      <ActivityIndicator size="small" color="#fff" />
-                    ) : (
-                      <Text style={styles.loadMoreText}>Load More Photos</Text>
-                    )}
-                  </TouchableOpacity>
-                  {loadingMore && (
-                    <Text style={styles.loadingMoreText}>{loadingProgress}</Text>
+        <FlatList
+          key="clusters-list"
+          data={clusters}
+          renderItem={renderCluster}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.clusterList}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor="#007AFF"
+            />
+          }
+          ListFooterComponent={
+            hasMore ? (
+              <View style={styles.footerContainer}>
+                <TouchableOpacity
+                  style={[styles.loadMoreButton, loadingMore && styles.loadMoreButtonDisabled]}
+                  onPress={loadMore}
+                  disabled={loadingMore}
+                >
+                  {loadingMore ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Text style={styles.loadMoreText}>Load More Photos</Text>
                   )}
-                </View>
-              ) : (
-                <Text style={styles.endText}>No more photos</Text>
-              )
-            }
-          />
-        )}
+                </TouchableOpacity>
+                {loadingMore && (
+                  <Text style={styles.loadingMoreText}>{loadingProgress}</Text>
+                )}
+              </View>
+            ) : (
+              <Text style={styles.endText}>No more photos</Text>
+            )
+          }
+        />
+        <TouchableOpacity
+          style={styles.floatingButton}
+          onPress={() => setShowAPITest(true)}
+        >
+          <Text style={styles.floatingButtonText}>🧪</Text>
+        </TouchableOpacity>
+        <APITestModal
+          visible={showAPITest}
+          onClose={() => setShowAPITest(false)}
+        />
       </SafeAreaView>
     </SafeAreaProvider>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  centerContainer: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  header: {
-    paddingTop: 10,
-    paddingBottom: 15,
-    paddingHorizontal: 20,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 4,
-  },
-  backButton: {
-    fontSize: 16,
-    color: '#007AFF',
-    marginBottom: 8,
-  },
-  gallery: {
-    padding: 2,
-  },
-  clusterList: {
-    padding: 12,
-  },
-  clusterCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  clusterHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 12,
-  },
-  clusterTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  clusterTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
-  },
-  vacationBadge: {
-    backgroundColor: '#34C759',
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '600',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 10,
-    marginRight: 8,
-    overflow: 'hidden',
-  },
-  clusterDate: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 2,
-  },
-  clusterLocation: {
-    fontSize: 12,
-    color: '#999',
-    marginTop: 2,
-  },
-  viewAllButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    backgroundColor: '#f0f0f0',
-    borderRadius: 8,
-  },
-  viewAllText: {
-    color: '#007AFF',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  clusterPreview: {
-    flexDirection: 'row',
-  },
-  previewContainer: {
-    position: 'relative',
-    marginRight: 4,
-  },
-  remainingOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 4,
-    margin: 2,
-  },
-  remainingText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  thumbnail: {
-    width: imageSize,
-    height: imageSize,
-    margin: 2,
-    borderRadius: 4,
-    backgroundColor: '#e0e0e0',
-  },
-  message: {
-    fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
-    marginTop: 20,
-  },
-  button: {
-    backgroundColor: '#007AFF',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-    marginTop: 20,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  fullscreenContainer: {
-    flex: 1,
-    backgroundColor: '#000',
-  },
-  closeButton: {
-    position: 'absolute',
-    top: 20,
-    right: 20,
-    zIndex: 10,
-    padding: 10,
-  },
-  closeText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  fullImage: {
-    flex: 1,
-    width: '100%',
-  },
-  footerContainer: {
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  loadMoreButton: {
-    backgroundColor: '#007AFF',
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginTop: 8,
-    minWidth: 180,
-  },
-  loadMoreButtonDisabled: {
-    backgroundColor: '#5AC8FA',
-  },
-  loadMoreText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  loadingMoreText: {
-    color: '#666',
-    fontSize: 14,
-    marginTop: 10,
-    textAlign: 'center',
-  },
-  endText: {
-    textAlign: 'center',
-    color: '#999',
-    fontSize: 14,
-    marginVertical: 20,
-  },
-});
