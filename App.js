@@ -9,13 +9,15 @@ import {
   ActivityIndicator,
   Dimensions,
   RefreshControl,
+  Linking,
+  Platform,
 } from 'react-native';
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
 import * as MediaLibrary from 'expo-media-library';
 import * as Location from 'expo-location';
 
 // Import reusable components and styles
-import { APITestModal, Screen } from './src/components';
+import { Screen } from './src/components';
 import styles, { imageSize } from './src/styles/appStyles';
 import {
   loadCache,
@@ -224,10 +226,10 @@ export default function App() {
   const [endCursor, setEndCursor] = useState(null);
   const [hasMore, setHasMore] = useState(true);
   const [homeLocation, setHomeLocation] = useState(null);
-  const [showAPITest, setShowAPITest] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [newestPhotoTime, setNewestPhotoTime] = useState(null);
   const [cacheLoaded, setCacheLoaded] = useState(false);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     initializeApp();
@@ -284,6 +286,9 @@ export default function App() {
     const isLoadMore = mode === 'loadMore';
     const isRefresh = mode === 'refresh';
 
+    // Clear previous errors
+    setError(null);
+
     if (isLoadMore) {
       setLoadingMore(true);
     } else if (isRefresh) {
@@ -292,6 +297,8 @@ export default function App() {
       setLoading(true);
     }
     setLoadingProgress(isRefresh ? 'Checking for new photos...' : 'Fetching photos...');
+
+    try {
 
     const queryOptions = {
       mediaType: 'photo',
@@ -438,6 +445,21 @@ export default function App() {
     } else {
       setLoading(false);
     }
+    } catch (err) {
+      console.error('Error loading photos:', err);
+      setError({
+        message: 'Failed to load photos',
+        details: err.message,
+        retry: () => loadPhotos(mode, home),
+      });
+      if (isLoadMore) {
+        setLoadingMore(false);
+      } else if (isRefresh) {
+        setRefreshing(false);
+      } else {
+        setLoading(false);
+      }
+    }
   };
 
   const onRefresh = useCallback(() => {
@@ -474,12 +496,27 @@ export default function App() {
   }
 
   if (hasPermission === false) {
+    const openSettings = () => {
+      if (Platform.OS === 'ios') {
+        Linking.openURL('app-settings:');
+      } else {
+        Linking.openSettings();
+      }
+    };
+
     return (
       <SafeAreaProvider>
         <SafeAreaView style={styles.centerContainer} edges={['top', 'bottom']}>
-          <Text style={styles.message}>No access to photos or location</Text>
-          <TouchableOpacity style={styles.button} onPress={requestPermissions}>
-            <Text style={styles.buttonText}>Grant Permission</Text>
+          <Text style={styles.permissionIcon}>📷</Text>
+          <Text style={styles.permissionTitle}>Permission Required</Text>
+          <Text style={styles.permissionMessage}>
+            To find your vacation photos, this app needs access to your photo library and location.
+          </Text>
+          <TouchableOpacity style={styles.button} onPress={openSettings}>
+            <Text style={styles.buttonText}>Open Settings</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.secondaryButton} onPress={() => requestPermissions(null)}>
+            <Text style={styles.secondaryButtonText}>Try Again</Text>
           </TouchableOpacity>
         </SafeAreaView>
       </SafeAreaProvider>
@@ -549,6 +586,22 @@ export default function App() {
     );
   }
 
+  // Error state (only show if no cached data)
+  if (error && clusters.length === 0) {
+    return (
+      <SafeAreaProvider>
+        <SafeAreaView style={styles.centerContainer} edges={['top', 'bottom']}>
+          <Text style={styles.errorIcon}>⚠️</Text>
+          <Text style={styles.errorTitle}>{error.message}</Text>
+          <Text style={styles.errorDetails}>{error.details}</Text>
+          <TouchableOpacity style={styles.button} onPress={error.retry}>
+            <Text style={styles.buttonText}>Try Again</Text>
+          </TouchableOpacity>
+        </SafeAreaView>
+      </SafeAreaProvider>
+    );
+  }
+
   return (
     <SafeAreaProvider>
       <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
@@ -576,6 +629,23 @@ export default function App() {
               tintColor="#007AFF"
             />
           }
+          ListEmptyComponent={
+            !loading && !refreshing ? (
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyIcon}>🏖️</Text>
+                <Text style={styles.emptyTitle}>No Vacation Photos Yet</Text>
+                <Text style={styles.emptyMessage}>
+                  We couldn't find any photos taken more than {MILES_FROM_HOME} miles from your current location.
+                </Text>
+                <Text style={styles.emptyHint}>
+                  Try taking some photos on your next trip, or pull down to refresh.
+                </Text>
+                <TouchableOpacity style={styles.button} onPress={onRefresh}>
+                  <Text style={styles.buttonText}>Refresh</Text>
+                </TouchableOpacity>
+              </View>
+            ) : null
+          }
           ListFooterComponent={
             hasMore ? (
               <View style={styles.footerContainer}>
@@ -598,16 +668,6 @@ export default function App() {
               <Text style={styles.endText}>No more photos</Text>
             )
           }
-        />
-        <TouchableOpacity
-          style={styles.floatingButton}
-          onPress={() => setShowAPITest(true)}
-        >
-          <Text style={styles.floatingButtonText}>🧪</Text>
-        </TouchableOpacity>
-        <APITestModal
-          visible={showAPITest}
-          onClose={() => setShowAPITest(false)}
         />
       </SafeAreaView>
     </SafeAreaProvider>

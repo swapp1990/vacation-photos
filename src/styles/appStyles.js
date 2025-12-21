@@ -258,11 +258,15 @@ export default StyleSheet.create({
     marginVertical: spacing.xl,
   },
 
-  // Floating Button
-  floatingButton: {
+  // Floating Buttons
+  floatingButtonsContainer: {
     position: 'absolute',
     bottom: 30,
     right: 20,
+    flexDirection: 'column',
+    gap: spacing.md,
+  },
+  floatingButton: {
     width: 56,
     height: 56,
     borderRadius: 28,
@@ -271,7 +275,100 @@ export default StyleSheet.create({
     alignItems: 'center',
     ...shadows.large,
   },
+  floatingButtonSecondary: {
+    backgroundColor: '#6B7280',
+  },
   floatingButtonText: {
     fontSize: 24,
+  },
+
+  // Modal Overlay
+  modalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: colors.background,
+    zIndex: 100,
+  },
+
+  // Permission Denied State
+  permissionIcon: {
+    fontSize: 64,
+    marginBottom: spacing.lg,
+  },
+  permissionTitle: {
+    ...typography.title2,
+    color: colors.text.primary,
+    marginBottom: spacing.md,
+    textAlign: 'center',
+  },
+  permissionMessage: {
+    ...typography.body,
+    color: colors.text.secondary,
+    textAlign: 'center',
+    paddingHorizontal: spacing.xxl,
+    marginBottom: spacing.sm,
+  },
+  secondaryButton: {
+    paddingHorizontal: spacing.xxl,
+    paddingVertical: spacing.md,
+    marginTop: spacing.md,
+  },
+  secondaryButtonText: {
+    color: colors.primary,
+    ...typography.body,
+    fontWeight: '600',
+  },
+
+  // Empty State
+  emptyContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.xxl,
+    paddingVertical: spacing.xxxl,
+  },
+  emptyIcon: {
+    fontSize: 64,
+    marginBottom: spacing.lg,
+  },
+  emptyTitle: {
+    ...typography.title2,
+    color: colors.text.primary,
+    marginBottom: spacing.md,
+    textAlign: 'center',
+  },
+  emptyMessage: {
+    ...typography.body,
+    color: colors.text.secondary,
+    textAlign: 'center',
+    marginBottom: spacing.sm,
+  },
+  emptyHint: {
+    ...typography.subhead,
+    color: colors.text.muted,
+    textAlign: 'center',
+    marginBottom: spacing.lg,
+  },
+
+  // Error State
+  errorIcon: {
+    fontSize: 64,
+    marginBottom: spacing.lg,
+  },
+  errorTitle: {
+    ...typography.title2,
+    color: colors.text.primary,
+    marginBottom: spacing.md,
+    textAlign: 'center',
+  },
+  errorDetails: {
+    ...typography.subhead,
+    color: colors.text.muted,
+    textAlign: 'center',
+    paddingHorizontal: spacing.xxl,
+    marginBottom: spacing.lg,
   },
 });
