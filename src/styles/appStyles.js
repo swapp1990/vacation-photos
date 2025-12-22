@@ -15,6 +15,7 @@ export default StyleSheet.create({
     backgroundColor: colors.background,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: spacing.xxl,
   },
 
   // Splash Screen
@@ -38,31 +39,58 @@ export default StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
     paddingVertical: spacing.xl,
     paddingHorizontal: spacing.xxxl,
-    borderRadius: borderRadius.xl,
+    borderRadius: borderRadius.xxl,
     alignItems: 'center',
     ...shadows.large,
   },
   splashLoadingText: {
     marginTop: spacing.md,
-    ...typography.body,
+    ...typography.subhead,
     color: colors.text.primary,
-    fontWeight: '600',
+  },
+  loadingPhotosRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginBottom: spacing.md,
+  },
+  loadingPhotoThumb: {
+    width: 56,
+    height: 56,
+    borderRadius: borderRadius.md,
+    marginHorizontal: 8,
+  },
+  detectedLocationText: {
+    marginTop: spacing.sm,
+    ...typography.caption,
+    color: colors.text.secondary,
   },
 
-  // Header
+  // Header - Clean & Compact
   header: {
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.md,
-    paddingHorizontal: spacing.xl,
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    backgroundColor: colors.surface,
+  },
+  headerLeft: {
+    flex: 1,
+  },
+  headerTitle: {
+    ...typography.title2,
+    color: colors.text.primary,
+  },
+  headerSubtitle: {
+    ...typography.caption,
+    color: colors.text.muted,
+    marginTop: 2,
   },
   headerLogo: {
-    width: 220,
-    height: 147,
-    alignSelf: 'center',
+    width: 44,
+    height: 44,
+    marginRight: spacing.md,
+    transform: [{ scale: 1.8 }],
   },
   title: {
     ...typography.largeTitle,
@@ -84,16 +112,90 @@ export default StyleSheet.create({
     padding: 2,
   },
   clusterList: {
-    padding: spacing.md,
+    padding: spacing.lg,
+    paddingTop: spacing.md,
   },
 
-  // Cluster Card
+  // Cluster Card - Photo Collage Style
   clusterCard: {
     backgroundColor: colors.surface,
-    borderRadius: borderRadius.lg,
+    borderRadius: borderRadius.xl,
+    marginBottom: spacing.lg,
+    overflow: 'hidden',
+    ...shadows.medium,
+  },
+  // Photo Collage
+  clusterCollage: {
+    flexDirection: 'row',
+    height: 160,
+  },
+  clusterMainPhoto: {
+    flex: 1,
+    marginRight: 2,
+  },
+  clusterMainPhotoImage: {
+    width: '100%',
+    height: '100%',
+  },
+  clusterSidePhotos: {
+    width: 80,
+    justifyContent: 'space-between',
+  },
+  clusterSidePhoto: {
+    flex: 1,
+    marginBottom: 2,
+  },
+  clusterSidePhotoLast: {
+    marginBottom: 0,
+  },
+  clusterSidePhotoImage: {
+    width: '100%',
+    height: '100%',
+  },
+  clusterMoreOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  clusterMoreText: {
+    ...typography.bodyBold,
+    color: colors.text.inverse,
+  },
+  // Card Info Section
+  clusterInfo: {
     padding: spacing.lg,
-    marginBottom: spacing.md,
-    ...shadows.small,
+  },
+  clusterLocationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.xs,
+  },
+  clusterLocationIcon: {
+    fontSize: 14,
+    marginRight: spacing.xs,
+  },
+  clusterLocationText: {
+    ...typography.headline,
+    color: colors.text.primary,
+    flex: 1,
+  },
+  clusterMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  clusterMetaText: {
+    ...typography.caption,
+    color: colors.text.muted,
+  },
+  clusterMetaDot: {
+    ...typography.caption,
+    color: colors.text.muted,
+    marginHorizontal: spacing.sm,
   },
   clusterHeader: {
     flexDirection: 'row',
@@ -106,20 +208,21 @@ export default StyleSheet.create({
     alignItems: 'center',
   },
   clusterTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    ...typography.headline,
     color: colors.text.primary,
   },
   vacationBadge: {
-    backgroundColor: '#34C759',
+    backgroundColor: colors.success,
     color: colors.text.inverse,
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 11,
+    fontWeight: '700',
     paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-    borderRadius: 10,
+    paddingVertical: 3,
+    borderRadius: borderRadius.round,
     marginRight: spacing.sm,
     overflow: 'hidden',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   clusterDate: {
     ...typography.subhead,
@@ -129,27 +232,33 @@ export default StyleSheet.create({
   clusterLocation: {
     ...typography.caption,
     color: colors.text.muted,
-    marginTop: 2,
+    marginTop: 4,
   },
   viewAllButton: {
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
-    backgroundColor: colors.background,
-    borderRadius: borderRadius.md,
+    backgroundColor: colors.primary,
+    borderRadius: borderRadius.round,
   },
   viewAllText: {
-    color: colors.primary,
-    ...typography.subhead,
-    fontWeight: '500',
+    color: colors.text.inverse,
+    ...typography.caption,
+    fontWeight: '600',
   },
 
-  // Cluster Preview
+  // Cluster Preview - Photo Strip
   clusterPreview: {
     flexDirection: 'row',
+    marginTop: spacing.sm,
   },
   previewContainer: {
     position: 'relative',
-    marginRight: spacing.xs,
+    marginRight: spacing.sm,
+  },
+  previewImage: {
+    width: 64,
+    height: 64,
+    borderRadius: borderRadius.md,
   },
   remainingOverlay: {
     position: 'absolute',
@@ -157,16 +266,14 @@ export default StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: colors.overlay,
+    backgroundColor: colors.overlayLight,
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: borderRadius.sm,
-    margin: 2,
+    borderRadius: borderRadius.md,
   },
   remainingText: {
     color: colors.text.inverse,
-    ...typography.body,
-    fontWeight: '600',
+    ...typography.bodyBold,
   },
 
   // Thumbnail
@@ -175,7 +282,7 @@ export default StyleSheet.create({
     height: imageSize,
     margin: 2,
     borderRadius: borderRadius.sm,
-    backgroundColor: '#e0e0e0',
+    backgroundColor: colors.divider,
   },
 
   // Messages & Buttons
@@ -188,13 +295,15 @@ export default StyleSheet.create({
   button: {
     backgroundColor: colors.primary,
     paddingHorizontal: spacing.xxl,
-    paddingVertical: spacing.md,
-    borderRadius: borderRadius.md,
+    paddingVertical: spacing.lg,
+    borderRadius: borderRadius.round,
     marginTop: spacing.xl,
+    ...shadows.small,
   },
   buttonText: {
     color: colors.text.inverse,
     ...typography.button,
+    textAlign: 'center',
   },
 
   // Fullscreen Image View
@@ -227,19 +336,18 @@ export default StyleSheet.create({
   // Footer & Load More
   footerContainer: {
     alignItems: 'center',
-    marginBottom: spacing.xl,
+    marginVertical: spacing.xl,
   },
   loadMoreButton: {
     backgroundColor: colors.primary,
-    paddingVertical: 14,
-    paddingHorizontal: spacing.xxl,
-    borderRadius: borderRadius.lg,
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.xxxl,
+    borderRadius: borderRadius.round,
     alignItems: 'center',
-    marginTop: spacing.sm,
-    minWidth: 180,
+    ...shadows.small,
   },
   loadMoreButtonDisabled: {
-    backgroundColor: '#5AC8FA',
+    backgroundColor: colors.primaryLight,
   },
   loadMoreText: {
     color: colors.text.inverse,
@@ -254,7 +362,7 @@ export default StyleSheet.create({
   endText: {
     textAlign: 'center',
     color: colors.text.muted,
-    ...typography.subhead,
+    ...typography.caption,
     marginVertical: spacing.xl,
   },
 
@@ -276,7 +384,7 @@ export default StyleSheet.create({
     ...shadows.large,
   },
   floatingButtonSecondary: {
-    backgroundColor: '#6B7280',
+    backgroundColor: colors.text.muted,
   },
   floatingButtonText: {
     fontSize: 24,
@@ -295,11 +403,11 @@ export default StyleSheet.create({
 
   // Permission Denied State
   permissionIcon: {
-    fontSize: 64,
-    marginBottom: spacing.lg,
+    fontSize: 72,
+    marginBottom: spacing.xl,
   },
   permissionTitle: {
-    ...typography.title2,
+    ...typography.title,
     color: colors.text.primary,
     marginBottom: spacing.md,
     textAlign: 'center',
@@ -308,7 +416,7 @@ export default StyleSheet.create({
     ...typography.body,
     color: colors.text.secondary,
     textAlign: 'center',
-    paddingHorizontal: spacing.xxl,
+    lineHeight: 24,
     marginBottom: spacing.sm,
   },
   secondaryButton: {
@@ -318,8 +426,7 @@ export default StyleSheet.create({
   },
   secondaryButtonText: {
     color: colors.primary,
-    ...typography.body,
-    fontWeight: '600',
+    ...typography.bodyBold,
   },
 
   // Empty State
@@ -331,11 +438,11 @@ export default StyleSheet.create({
     paddingVertical: spacing.xxxl,
   },
   emptyIcon: {
-    fontSize: 64,
-    marginBottom: spacing.lg,
+    fontSize: 72,
+    marginBottom: spacing.xl,
   },
   emptyTitle: {
-    ...typography.title2,
+    ...typography.title,
     color: colors.text.primary,
     marginBottom: spacing.md,
     textAlign: 'center',
@@ -344,22 +451,23 @@ export default StyleSheet.create({
     ...typography.body,
     color: colors.text.secondary,
     textAlign: 'center',
+    lineHeight: 24,
     marginBottom: spacing.sm,
   },
   emptyHint: {
     ...typography.subhead,
     color: colors.text.muted,
     textAlign: 'center',
-    marginBottom: spacing.lg,
+    marginBottom: spacing.xl,
   },
 
   // Error State
   errorIcon: {
-    fontSize: 64,
-    marginBottom: spacing.lg,
+    fontSize: 72,
+    marginBottom: spacing.xl,
   },
   errorTitle: {
-    ...typography.title2,
+    ...typography.title,
     color: colors.text.primary,
     marginBottom: spacing.md,
     textAlign: 'center',
@@ -368,7 +476,196 @@ export default StyleSheet.create({
     ...typography.subhead,
     color: colors.text.muted,
     textAlign: 'center',
+    marginBottom: spacing.xl,
+  },
+
+  // Debug Button
+  debugButton: {
+    backgroundColor: colors.error,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.round,
+    marginLeft: spacing.md,
+  },
+  debugButtonText: {
+    color: colors.text.inverse,
+    fontSize: 11,
+    fontWeight: '700',
+  },
+
+  // Trip Detail Screen
+  tripHeader: {
+    backgroundColor: colors.surface,
+    paddingBottom: spacing.xl,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.divider,
+  },
+  backButtonContainer: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.sm,
+  },
+  backButtonText: {
+    fontSize: 28,
+    color: colors.primary,
+  },
+  tripHeaderContent: {
+    alignItems: 'center',
+    paddingHorizontal: spacing.xl,
+  },
+  tripEmoji: {
+    fontSize: 48,
+    marginBottom: spacing.sm,
+  },
+  tripTagline: {
+    ...typography.caption,
+    color: colors.text.muted,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: spacing.xs,
+  },
+  tripTitle: {
+    ...typography.largeTitle,
+    color: colors.text.primary,
+    textAlign: 'center',
+    marginBottom: spacing.sm,
+  },
+  tripMeta: {
+    ...typography.subhead,
+    color: colors.text.secondary,
+    textAlign: 'center',
+  },
+  tripGallery: {
+    paddingHorizontal: spacing.xs,
+    paddingTop: spacing.md,
+  },
+  daySectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.xl,
+    paddingBottom: spacing.md,
+  },
+  daySectionTitle: {
+    ...typography.headline,
+    color: colors.text.primary,
+    marginRight: spacing.sm,
+  },
+  daySectionSubtitle: {
+    ...typography.subhead,
+    color: colors.text.muted,
+  },
+  photoRow: {
+    flexDirection: 'row',
+    paddingHorizontal: spacing.xs,
+  },
+
+  // Collapsed Cluster Card (for unknown location)
+  collapsedCard: {
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.lg,
+    marginBottom: spacing.md,
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    ...shadows.small,
+  },
+  collapsedCardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  collapsedCardIcon: {
+    fontSize: 20,
+    marginRight: spacing.md,
+    opacity: 0.6,
+  },
+  collapsedCardInfo: {
+    flex: 1,
+  },
+  collapsedCardTitle: {
+    ...typography.subhead,
+    color: colors.text.secondary,
+  },
+  collapsedCardMeta: {
+    ...typography.caption,
+    color: colors.text.muted,
+    marginTop: 2,
+  },
+  collapsedCardArrow: {
+    fontSize: 24,
+    color: colors.text.muted,
+    marginLeft: spacing.sm,
+  },
+
+  // Onboarding Screen
+  onboardingContainer: {
+    flex: 1,
+  },
+  onboardingBackground: {
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
+  },
+  onboardingOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
     paddingHorizontal: spacing.xxl,
-    marginBottom: spacing.lg,
+  },
+  onboardingTop: {
+    paddingTop: spacing.xxxl,
+  },
+  onboardingWelcome: {
+    ...typography.headline,
+    color: 'rgba(255, 255, 255, 0.9)',
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
+  onboardingTitle: {
+    fontSize: 42,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 8,
+  },
+  onboardingBottom: {
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    marginHorizontal: -spacing.xxl,
+    paddingHorizontal: spacing.xxl,
+    paddingTop: spacing.xl,
+    paddingBottom: spacing.xxxl,
+  },
+  onboardingTagline: {
+    ...typography.title2,
+    color: '#FFFFFF',
+    lineHeight: 28,
+    marginBottom: spacing.xl,
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
+  onboardingFeatures: {
+    marginBottom: spacing.xl,
+  },
+  onboardingFeatureText: {
+    ...typography.body,
+    color: 'rgba(255, 255, 255, 0.95)',
+    marginBottom: spacing.md,
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  onboardingButton: {
+    backgroundColor: '#FFFFFF',
+    paddingVertical: spacing.lg + 2,
+    paddingHorizontal: spacing.xxxl,
+    borderRadius: borderRadius.round,
+    alignItems: 'center',
+    ...shadows.large,
+  },
+  onboardingButtonText: {
+    ...typography.button,
+    color: colors.primary,
+    fontSize: 18,
   },
 });

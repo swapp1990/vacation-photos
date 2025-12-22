@@ -89,10 +89,19 @@ export function extractClusterMetadata(cluster) {
 
 // Rebuild clusters with full photo objects from cached metadata
 export function rebuildClusters(clusterMetadata, photosById) {
-  return clusterMetadata.map(cluster => ({
+  const clusters = clusterMetadata.map(cluster => ({
     ...cluster,
     photos: cluster.photoIds
       .map(id => photosById[id])
       .filter(Boolean), // Filter out any missing photos
   }));
+
+  // Sort clusters: most recent first, but unknown location always last
+  clusters.sort((a, b) => {
+    if (a.id === 'cluster-unknown') return 1;
+    if (b.id === 'cluster-unknown') return -1;
+    return b.endDate - a.endDate;
+  });
+
+  return clusters;
 }
