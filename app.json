@@ -2,7 +2,7 @@
   "expo": {
     "name": "Vacation Photos",
     "slug": "vacation-photos",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "privacy": "public",
     "orientation": "portrait",
     "icon": "./assets/AppIcons/appstore.png",
@@ -16,7 +16,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.swapp1990.vacationphotos",
-      "buildNumber": "1",
+      "buildNumber": "2",
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "This app needs access to your photos to display and organize your vacation memories.",
         "NSLocationWhenInUseUsageDescription": "This app needs your location to identify photos taken away from home.",
