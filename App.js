@@ -13,6 +13,9 @@ import {
   Linking,
   Platform,
   AppState,
+  Modal,
+  TextInput,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
@@ -29,7 +32,16 @@ try {
 }
 
 // Import reusable components and styles
-import { Screen, LocationSelectionScreen } from './src/components';
+import {
+  Screen,
+  LocationSelectionScreen,
+  YearDetailView,
+  ClusterCard,
+  YearCard,
+  CollapsedClusterCard,
+  CollagePhoto,
+  formatDateRange,
+} from './src/components';
 import styles, { imageSize } from './src/styles/appStyles';
 import {
   loadCache,
@@ -369,18 +381,6 @@ function mergeClusters(clusters) {
   return clusters;
 }
 
-function formatDateRange(start, end) {
-  const options = { month: 'short', day: 'numeric' };
-  const startStr = start.toLocaleDateString('en-US', options);
-  const endStr = end.toLocaleDateString('en-US', options);
-  const year = start.getFullYear();
-
-  if (startStr === endStr) {
-    return `${startStr}, ${year}`;
-  }
-  return `${startStr} - ${endStr}, ${year}`;
-}
-
 // Get emoji and tagline based on location name
 function getLocationVibe(locationName) {
   if (!locationName) return { emoji: '📍', tagline: 'Your memories' };
@@ -515,194 +515,6 @@ const PhotoThumbnail = memo(({ photo, onPress, size = imageSize }) => {
   );
 });
 
-// Get distance emoji based on miles
-function getDistanceEmoji(miles) {
-  if (miles < 100) return '🚗';
-  if (miles < 500) return '🚂';
-  if (miles < 1500) return '✈️';
-  if (miles < 5000) return '🌍';
-  return '🚀';
-}
-
-const CollagePhoto = memo(({ photo, style, imageStyle }) => {
-  const [uri, setUri] = useState(() => photo ? uriCache.get(photo.id) || null : null);
-  const [loadError, setLoadError] = useState(false);
-
-  useEffect(() => {
-    if (!photo || uri) return;
-
-    const cached = uriCache.get(photo.id);
-    if (cached) {
-      setUri(cached);
-      return;
-    }
-
-    let mounted = true;
-    MediaLibrary.getAssetInfoAsync(photo.id)
-      .then((info) => {
-        const photoUri = info.localUri || info.uri;
-        if (photoUri) {
-          uriCache.set(photo.id, photoUri);
-        }
-        if (mounted) {
-          setUri(photoUri);
-        }
-      })
-      .catch((err) => {
-        if (mounted) setLoadError(true);
-      });
-    return () => { mounted = false; };
-  }, [photo?.id, uri]);
-
-  // Show iCloud placeholder if image failed to load
-  if (loadError) {
-    return (
-      <View style={style}>
-        <View style={[imageStyle, styles.icloudPlaceholder]}>
-          <Text style={styles.icloudIcon}>☁️</Text>
-        </View>
-      </View>
-    );
-  }
-
-  return (
-    <View style={style}>
-      {uri ? (
-        <Image
-          source={{ uri }}
-          style={imageStyle}
-          onError={() => setLoadError(true)}
-        />
-      ) : (
-        <View style={[imageStyle, { backgroundColor: '#E2E8F0' }]} />
-      )}
-    </View>
-  );
-});
-
-function ClusterCard({ cluster, onViewAll, photosWithFaces = {} }) {
-  // Get the best photos for the collage, prioritizing ones with faces for the cover
-  const getCollagePhotos = () => {
-    const allPhotos = cluster.photos;
-    if (allPhotos.length === 0) return [];
-
-    // Find the first photo with a face to use as cover
-    const photoWithFace = allPhotos.find(p => photosWithFaces[p.id] === true);
-
-    if (photoWithFace && photoWithFace.id !== allPhotos[0].id) {
-      // Put the photo with face first, then fill with others
-      const otherPhotos = allPhotos.filter(p => p.id !== photoWithFace.id).slice(0, 3);
-      return [photoWithFace, ...otherPhotos];
-    }
-
-    // Default: just use first 4 photos
-    return allPhotos.slice(0, 4);
-  };
-
-  const photos = getCollagePhotos();
-  const remaining = cluster.photos.length - 4;
-
-  const locationName = cluster.locationName ||
-    (cluster.location
-      ? `${Number(cluster.location.latitude).toFixed(1)}°, ${Number(cluster.location.longitude).toFixed(1)}°`
-      : 'Unknown Location');
-
-  // Calculate average distance from home (convert km to miles)
-  const photosWithDistance = cluster.photos.filter(p => p.distanceFromHome != null);
-  const avgDistanceKm = photosWithDistance.length > 0
-    ? photosWithDistance.reduce((sum, p) => sum + p.distanceFromHome, 0) / photosWithDistance.length
-    : null;
-  const avgDistanceMiles = avgDistanceKm ? Math.round(avgDistanceKm * 0.621371) : null;
-
-  return (
-    <TouchableOpacity style={styles.clusterCard} onPress={() => onViewAll(cluster)} activeOpacity={0.9}>
-      {/* Photo Collage */}
-      <View style={styles.clusterCollage}>
-        {/* Main large photo */}
-        <CollagePhoto
-          photo={photos[0]}
-          style={styles.clusterMainPhoto}
-          imageStyle={styles.clusterMainPhotoImage}
-        />
-        {/* Side photos */}
-        {photos.length > 1 && (
-          <View style={styles.clusterSidePhotos}>
-            {photos.slice(1, 4).map((photo, index) => (
-              <View
-                key={photo.id}
-                style={[
-                  styles.clusterSidePhoto,
-                  index === Math.min(photos.length - 2, 2) && styles.clusterSidePhotoLast,
-                ]}
-              >
-                <CollagePhoto
-                  photo={photo}
-                  style={{ flex: 1 }}
-                  imageStyle={styles.clusterSidePhotoImage}
-                />
-                {/* Show +N overlay on last photo if more exist */}
-                {index === 2 && remaining > 0 && (
-                  <View style={styles.clusterMoreOverlay}>
-                    <Text style={styles.clusterMoreText}>+{remaining}</Text>
-                  </View>
-                )}
-              </View>
-            ))}
-          </View>
-        )}
-        {/* Distance badge overlay */}
-        {avgDistanceMiles && (
-          <View style={styles.distanceBadge}>
-            <Text style={styles.distanceBadgeEmoji}>{getDistanceEmoji(avgDistanceMiles)}</Text>
-            <Text style={styles.distanceBadgeText}>{avgDistanceMiles.toLocaleString()} mi</Text>
-          </View>
-        )}
-      </View>
-
-      {/* Info Section */}
-      <View style={styles.clusterInfo}>
-        <View style={styles.clusterLocationRow}>
-          <Text style={styles.clusterLocationText}>{locationName}</Text>
-        </View>
-        <View style={styles.clusterMeta}>
-          <Text style={styles.clusterMetaText}>{cluster.photos.length} photos</Text>
-          <Text style={styles.clusterMetaDot}>·</Text>
-          <Text style={styles.clusterMetaText}>
-            {formatDateRange(cluster.startDate, cluster.endDate)}
-          </Text>
-          {cluster.days > 1 && (
-            <>
-              <Text style={styles.clusterMetaDot}>·</Text>
-              <Text style={styles.clusterMetaText}>{cluster.days} days</Text>
-            </>
-          )}
-        </View>
-      </View>
-    </TouchableOpacity>
-  );
-}
-
-function CollapsedClusterCard({ cluster, onViewAll }) {
-  return (
-    <TouchableOpacity
-      style={styles.collapsedCard}
-      onPress={() => onViewAll(cluster)}
-      activeOpacity={0.9}
-    >
-      <View style={styles.collapsedCardContent}>
-        <Text style={styles.collapsedCardIcon}>📍</Text>
-        <View style={styles.collapsedCardInfo}>
-          <Text style={styles.collapsedCardTitle}>Unknown Location</Text>
-          <Text style={styles.collapsedCardMeta}>
-            {cluster.photos.length} photos without location data
-          </Text>
-        </View>
-        <Text style={styles.collapsedCardArrow}>›</Text>
-      </View>
-    </TouchableOpacity>
-  );
-}
-
 export default function App() {
   const [photos, setPhotos] = useState([]);
   const [clusters, setClusters] = useState([]);
@@ -726,6 +538,13 @@ export default function App() {
   const [faceDetectionRunning, setFaceDetectionRunning] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(null); // null = loading, true = show, false = skip
   const [showLocationSelection, setShowLocationSelection] = useState(false);
+  const [editingDayPhotos, setEditingDayPhotos] = useState(null); // Photos to update location for
+  const [showLocationEditModal, setShowLocationEditModal] = useState(false);
+  const [locationSearchQuery, setLocationSearchQuery] = useState('');
+  const [locationSearchResults, setLocationSearchResults] = useState([]);
+  const [selectedEditLocation, setSelectedEditLocation] = useState(null);
+  const [searchingLocation, setSearchingLocation] = useState(false);
+  const [selectedYear, setSelectedYear] = useState(null); // For viewing previous year's clusters
 
   useEffect(() => {
     checkOnboarding();
@@ -761,6 +580,111 @@ export default function App() {
     setDetectedLocation(location.displayName);
     // Pass home directly to avoid stale state issues
     initializeApp(home);
+  };
+
+  // Search for locations using Nominatim API
+  const searchLocations = async (query) => {
+    if (!query || query.length < 2) {
+      setLocationSearchResults([]);
+      return;
+    }
+
+    setSearchingLocation(true);
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5`,
+        {
+          headers: {
+            'User-Agent': 'VacationPhotosApp/1.0',
+          },
+        }
+      );
+      const data = await response.json();
+      setLocationSearchResults(data.map(item => ({
+        displayName: item.display_name,
+        latitude: parseFloat(item.lat),
+        longitude: parseFloat(item.lon),
+      })));
+    } catch (e) {
+      console.log('Location search error:', e.message);
+      setLocationSearchResults([]);
+    }
+    setSearchingLocation(false);
+  };
+
+  // Handle updating location for photos
+  const handleLocationUpdate = async () => {
+    if (!editingDayPhotos || !selectedEditLocation) return;
+
+    // Update photos with new location
+    const updatedPhotos = photos.map(photo => {
+      if (editingDayPhotos.some(p => p.id === photo.id)) {
+        return {
+          ...photo,
+          location: {
+            latitude: selectedEditLocation.latitude,
+            longitude: selectedEditLocation.longitude,
+          },
+          distanceFromHome: getDistanceKm(
+            homeLocation.latitude,
+            homeLocation.longitude,
+            selectedEditLocation.latitude,
+            selectedEditLocation.longitude
+          ),
+        };
+      }
+      return photo;
+    });
+
+    setPhotos(updatedPhotos);
+
+    // Re-cluster with updated locations
+    const clustered = clusterPhotos(updatedPhotos);
+
+    // Preserve existing locationNames
+    for (const newCluster of clustered) {
+      if (!newCluster.location) continue;
+      for (const oldCluster of clusters) {
+        if (!oldCluster.location || !oldCluster.locationName) continue;
+        const distance = getDistanceKm(
+          newCluster.location.latitude, newCluster.location.longitude,
+          oldCluster.location.latitude, oldCluster.location.longitude
+        );
+        if (distance < 10) {
+          newCluster.locationName = oldCluster.locationName;
+          break;
+        }
+      }
+    }
+
+    // Geocode new clusters
+    await geocodeClustersInParallel(clustered);
+
+    setClusters(clustered);
+
+    // Update cache
+    const cacheData = {
+      photos: updatedPhotos.map(extractPhotoMetadata),
+      clusters: clustered.map(extractClusterMetadata),
+      homeLocation,
+      newestPhotoTime,
+      endCursor,
+      hasMore,
+    };
+    await saveCache(cacheData);
+
+    // Close modal
+    setShowLocationEditModal(false);
+    setEditingDayPhotos(null);
+    setSelectedEditLocation(null);
+
+    // If unknown location cluster is now empty, go back to main view
+    const unknownCluster = clustered.find(c => c.id === 'cluster-unknown');
+    if (!unknownCluster || unknownCluster.photos.length === 0) {
+      setSelectedCluster(null);
+    } else {
+      setSelectedCluster(unknownCluster);
+    }
   };
 
   // Background face detection - runs after initial load is complete
@@ -1183,7 +1107,64 @@ export default function App() {
     setShowOnboarding(true);
   };
 
+  // Group clusters: current year shown individually, previous years as year cards
+  const getGroupedClusterItems = () => {
+    const currentYear = new Date().getFullYear();
+    const currentYearClusters = [];
+    const previousYearClusters = {}; // { year: [clusters] }
+    let unknownCluster = null;
+
+    for (const cluster of clusters) {
+      if (cluster.id === 'cluster-unknown') {
+        unknownCluster = cluster;
+        continue;
+      }
+
+      const clusterYear = cluster.endDate.getFullYear();
+      if (clusterYear === currentYear) {
+        currentYearClusters.push(cluster);
+      } else {
+        if (!previousYearClusters[clusterYear]) {
+          previousYearClusters[clusterYear] = [];
+        }
+        previousYearClusters[clusterYear].push(cluster);
+      }
+    }
+
+    // Build final list: current year clusters, then year cards, then unknown
+    const items = [...currentYearClusters];
+
+    // Add year cards for previous years (sorted by year descending)
+    const years = Object.keys(previousYearClusters).sort((a, b) => b - a);
+    for (const year of years) {
+      items.push({
+        id: `year-${year}`,
+        type: 'year',
+        year: parseInt(year),
+        clusters: previousYearClusters[year],
+      });
+    }
+
+    // Unknown location cluster last
+    if (unknownCluster) {
+      items.push(unknownCluster);
+    }
+
+    return items;
+  };
+
   const renderCluster = ({ item }) => {
+    // Year card for previous years
+    if (item.type === 'year') {
+      return (
+        <YearCard
+          year={item.year}
+          clusters={item.clusters}
+          onPress={(year) => setSelectedYear(year)}
+        />
+      );
+    }
+
     // Use collapsed card for unknown location cluster
     if (item.id === 'cluster-unknown') {
       return (
@@ -1306,6 +1287,19 @@ export default function App() {
     );
   }
 
+  // Year detail view - show clusters for a specific year
+  if (selectedYear) {
+    return (
+      <YearDetailView
+        year={selectedYear}
+        clusters={clusters}
+        photosWithFaces={photosWithFaces}
+        onBack={() => setSelectedYear(null)}
+        onViewCluster={handleViewAll}
+      />
+    );
+  }
+
   if (selectedCluster) {
     const vibe = getLocationVibe(selectedCluster.locationName);
     const locationCity = selectedCluster.locationName?.split(',')[0] || 'Trip';
@@ -1335,8 +1329,26 @@ export default function App() {
             keyExtractor={(item) => item.id}
             renderSectionHeader={({ section }) => (
               <View style={styles.daySectionHeader}>
-                <Text style={styles.daySectionTitle}>{section.title}</Text>
-                <Text style={styles.daySectionSubtitle}>{section.subtitle}</Text>
+                <View style={styles.daySectionTitleRow}>
+                  <View>
+                    <Text style={styles.daySectionTitle}>{section.title}</Text>
+                    <Text style={styles.daySectionSubtitle}>{section.subtitle}</Text>
+                  </View>
+                  {selectedCluster.id === 'cluster-unknown' && (
+                    <TouchableOpacity
+                      style={styles.addLocationButton}
+                      onPress={() => {
+                        setEditingDayPhotos(section.data);
+                        setLocationSearchQuery('');
+                        setLocationSearchResults([]);
+                        setSelectedEditLocation(null);
+                        setShowLocationEditModal(true);
+                      }}
+                    >
+                      <Text style={styles.addLocationButtonText}>+ Add Location</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
               </View>
             )}
             renderItem={({ item, index, section }) => {
@@ -1354,6 +1366,95 @@ export default function App() {
             contentContainerStyle={styles.tripGallery}
             stickySectionHeadersEnabled={false}
           />
+
+          {/* Location Edit Modal */}
+          <Modal
+            visible={showLocationEditModal}
+            animationType="slide"
+            presentationStyle="pageSheet"
+          >
+            <SafeAreaView style={styles.modalContainer}>
+              <View style={styles.modalHeader}>
+                <TouchableOpacity
+                  onPress={() => {
+                    setShowLocationEditModal(false);
+                    setEditingDayPhotos(null);
+                    setSelectedEditLocation(null);
+                  }}
+                >
+                  <Text style={styles.modalCancel}>Cancel</Text>
+                </TouchableOpacity>
+                <Text style={styles.modalTitle}>Set Location</Text>
+                <TouchableOpacity
+                  onPress={handleLocationUpdate}
+                  disabled={!selectedEditLocation}
+                >
+                  <Text style={[
+                    styles.modalDone,
+                    !selectedEditLocation && styles.modalDoneDisabled
+                  ]}>Done</Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.modalContent}>
+                <Text style={styles.modalSubtitle}>
+                  Setting location for {editingDayPhotos?.length || 0} photos
+                </Text>
+
+                <View style={styles.searchInputContainer}>
+                  <TextInput
+                    style={styles.searchInput}
+                    placeholder="Search for a location..."
+                    placeholderTextColor="#999"
+                    value={locationSearchQuery}
+                    onChangeText={(text) => {
+                      setLocationSearchQuery(text);
+                      searchLocations(text);
+                    }}
+                    autoFocus
+                  />
+                  {searchingLocation && (
+                    <ActivityIndicator size="small" color="#007AFF" style={styles.searchSpinner} />
+                  )}
+                </View>
+
+                {selectedEditLocation && (
+                  <View style={styles.selectedLocationBox}>
+                    <Text style={styles.selectedLocationLabel}>Selected:</Text>
+                    <Text style={styles.selectedLocationText} numberOfLines={2}>
+                      {selectedEditLocation.displayName}
+                    </Text>
+                  </View>
+                )}
+
+                <FlatList
+                  data={locationSearchResults}
+                  keyExtractor={(item, index) => `${item.latitude}-${item.longitude}-${index}`}
+                  renderItem={({ item }) => (
+                    <TouchableOpacity
+                      style={[
+                        styles.locationResultItem,
+                        selectedEditLocation?.latitude === item.latitude &&
+                        selectedEditLocation?.longitude === item.longitude &&
+                        styles.locationResultItemSelected
+                      ]}
+                      onPress={() => setSelectedEditLocation(item)}
+                    >
+                      <Text style={styles.locationResultText} numberOfLines={2}>
+                        {item.displayName}
+                      </Text>
+                      {selectedEditLocation?.latitude === item.latitude &&
+                       selectedEditLocation?.longitude === item.longitude && (
+                        <Text style={styles.locationResultCheck}>✓</Text>
+                      )}
+                    </TouchableOpacity>
+                  )}
+                  style={styles.locationResultsList}
+                  keyboardShouldPersistTaps="handled"
+                />
+              </View>
+            </SafeAreaView>
+          </Modal>
         </SafeAreaView>
       </SafeAreaProvider>
     );
@@ -1440,7 +1541,7 @@ export default function App() {
         </View>
         <FlatList
           key="clusters-list"
-          data={clusters}
+          data={getGroupedClusterItems()}
           renderItem={renderCluster}
           keyExtractor={(item) => item.id}
           extraData={photosWithFaces}

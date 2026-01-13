@@ -586,16 +586,25 @@ export default StyleSheet.create({
     color: colors.text.secondary,
     textAlign: 'center',
   },
+  tripHint: {
+    ...typography.caption,
+    color: colors.text.muted,
+    textAlign: 'center',
+    marginTop: spacing.sm,
+  },
   tripGallery: {
     paddingHorizontal: spacing.xs,
     paddingTop: spacing.md,
   },
   daySectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
     paddingHorizontal: spacing.md,
     paddingTop: spacing.xl,
     paddingBottom: spacing.md,
+  },
+  daySectionTitleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   daySectionTitle: {
     ...typography.headline,
@@ -605,6 +614,17 @@ export default StyleSheet.create({
   daySectionSubtitle: {
     ...typography.subhead,
     color: colors.text.muted,
+  },
+  addLocationButton: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  addLocationButtonText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '600',
   },
   photoRow: {
     flexDirection: 'row',
@@ -718,5 +738,104 @@ export default StyleSheet.create({
     ...typography.button,
     color: colors.primary,
     fontSize: 18,
+  },
+
+  // Location Edit Modal
+  modalContainer: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  modalCancel: {
+    ...typography.body,
+    color: colors.primary,
+  },
+  modalTitle: {
+    ...typography.headline,
+    color: colors.text.primary,
+  },
+  modalDone: {
+    ...typography.body,
+    color: colors.primary,
+    fontWeight: '600',
+  },
+  modalDoneDisabled: {
+    color: colors.text.muted,
+  },
+  modalContent: {
+    flex: 1,
+    padding: spacing.md,
+  },
+  modalSubtitle: {
+    ...typography.subhead,
+    color: colors.text.secondary,
+    marginBottom: spacing.md,
+  },
+  searchInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.md,
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.md,
+  },
+  searchInput: {
+    flex: 1,
+    ...typography.body,
+    color: colors.text.primary,
+    paddingVertical: spacing.md,
+  },
+  searchSpinner: {
+    marginLeft: spacing.sm,
+  },
+  selectedLocationBox: {
+    backgroundColor: colors.primaryLight || '#E3F2FD',
+    padding: spacing.md,
+    borderRadius: borderRadius.md,
+    marginBottom: spacing.md,
+  },
+  selectedLocationLabel: {
+    ...typography.caption,
+    color: colors.primary,
+    fontWeight: '600',
+    marginBottom: spacing.xs,
+  },
+  selectedLocationText: {
+    ...typography.body,
+    color: colors.text.primary,
+  },
+  locationResultsList: {
+    flex: 1,
+  },
+  locationResultItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  locationResultItemSelected: {
+    backgroundColor: colors.primaryLight || '#E3F2FD',
+  },
+  locationResultText: {
+    ...typography.body,
+    color: colors.text.primary,
+    flex: 1,
+  },
+  locationResultCheck: {
+    color: colors.primary,
+    fontSize: 18,
+    fontWeight: '600',
+    marginLeft: spacing.sm,
   },
 });
