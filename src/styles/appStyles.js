@@ -59,6 +59,25 @@ export default StyleSheet.create({
     borderRadius: borderRadius.md,
     marginHorizontal: 8,
   },
+  progressBarContainer: {
+    width: '100%',
+    height: 6,
+    backgroundColor: colors.border,
+    borderRadius: 3,
+    marginTop: spacing.lg,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%',
+    backgroundColor: colors.primary,
+    borderRadius: 3,
+  },
+  progressPercent: {
+    marginTop: spacing.xs,
+    ...typography.caption,
+    color: colors.text.secondary,
+    fontWeight: '600',
+  },
   detectedLocationText: {
     marginTop: spacing.sm,
     ...typography.caption,
@@ -165,6 +184,28 @@ export default StyleSheet.create({
   clusterMoreText: {
     ...typography.bodyBold,
     color: colors.text.inverse,
+  },
+  // Distance Badge
+  distanceBadge: {
+    position: 'absolute',
+    bottom: spacing.sm,
+    left: spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    paddingVertical: 4,
+    paddingHorizontal: spacing.sm,
+    borderRadius: borderRadius.round,
+  },
+  distanceBadgeEmoji: {
+    fontSize: 12,
+    marginRight: 4,
+  },
+  distanceBadgeText: {
+    ...typography.caption,
+    color: colors.text.inverse,
+    fontWeight: '600',
+    fontSize: 11,
   },
   // Card Info Section
   clusterInfo: {

@@ -403,6 +403,15 @@ const PhotoThumbnail = memo(({ photo, onPress, size = imageSize }) => {
   );
 });
 
+// Get distance emoji based on miles
+function getDistanceEmoji(miles) {
+  if (miles < 100) return '🚗';
+  if (miles < 500) return '🚂';
+  if (miles < 1500) return '✈️';
+  if (miles < 5000) return '🌍';
+  return '🚀';
+}
+
 const CollagePhoto = memo(({ photo, style, imageStyle }) => {
   const [uri, setUri] = useState(() => photo ? uriCache.get(photo.id) || null : null);
   const [loadError, setLoadError] = useState(false);
@@ -486,6 +495,13 @@ function ClusterCard({ cluster, onViewAll, photosWithFaces = {} }) {
       ? `${Number(cluster.location.latitude).toFixed(1)}°, ${Number(cluster.location.longitude).toFixed(1)}°`
       : 'Unknown Location');
 
+  // Calculate average distance from home (convert km to miles)
+  const photosWithDistance = cluster.photos.filter(p => p.distanceFromHome != null);
+  const avgDistanceKm = photosWithDistance.length > 0
+    ? photosWithDistance.reduce((sum, p) => sum + p.distanceFromHome, 0) / photosWithDistance.length
+    : null;
+  const avgDistanceMiles = avgDistanceKm ? Math.round(avgDistanceKm * 0.621371) : null;
+
   return (
     <TouchableOpacity style={styles.clusterCard} onPress={() => onViewAll(cluster)} activeOpacity={0.9}>
       {/* Photo Collage */}
@@ -520,6 +536,13 @@ function ClusterCard({ cluster, onViewAll, photosWithFaces = {} }) {
                 )}
               </View>
             ))}
+          </View>
+        )}
+        {/* Distance badge overlay */}
+        {avgDistanceMiles && (
+          <View style={styles.distanceBadge}>
+            <Text style={styles.distanceBadgeEmoji}>{getDistanceEmoji(avgDistanceMiles)}</Text>
+            <Text style={styles.distanceBadgeText}>{avgDistanceMiles.toLocaleString()} mi</Text>
           </View>
         )}
       </View>
@@ -577,6 +600,7 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState('');
+  const [loadingPercent, setLoadingPercent] = useState(0);
   const [endCursor, setEndCursor] = useState(null);
   const [hasMore, setHasMore] = useState(true);
   const [homeLocation, setHomeLocation] = useState(null);
@@ -783,6 +807,7 @@ export default function App() {
       setRefreshing(true);
     } else {
       setLoading(true);
+      setLoadingPercent(0);
     }
     setLoadingProgress(isRefresh ? 'Checking for new photos...' : 'Fetching photos...');
 
@@ -825,15 +850,41 @@ export default function App() {
     let processedCount = 0;
     let geocodedCount = 0; // Track separately for early location display
 
-    for (const asset of assetsToProcess) {
-      processedCount++;
+    // Process photos in parallel batches for much faster loading
+    const BATCH_SIZE = 15;
 
+    // Helper to process a single asset
+    const processAsset = async (asset) => {
       try {
         const info = await MediaLibrary.getAssetInfoAsync(asset.id);
         const photoUri = info.localUri || info.uri;
 
-        // Show photo thumbnails as we scan (every 10th photo)
-        if (!isRefresh && processedCount % 10 === 0 && photoUri) {
+        // Cache the URI for later use by thumbnails
+        if (photoUri) {
+          uriCache.set(asset.id, photoUri);
+        }
+
+        return { asset, info, photoUri };
+      } catch (e) {
+        console.log('Error processing photo:', e.message);
+        return null;
+      }
+    };
+
+    for (let i = 0; i < assetsToProcess.length; i += BATCH_SIZE) {
+      const batch = assetsToProcess.slice(i, i + BATCH_SIZE);
+
+      // Process batch in parallel
+      const results = await Promise.all(batch.map(processAsset));
+
+      for (const result of results) {
+        if (!result) continue;
+
+        const { asset, info, photoUri } = result;
+        processedCount++;
+
+        // Show photo thumbnails as we scan (every batch)
+        if (!isRefresh && photoUri && processedCount % BATCH_SIZE === 0) {
           setRecentPhotos(prev => [...prev.slice(-3), { id: asset.id, uri: photoUri }]);
         }
 
@@ -866,10 +917,9 @@ export default function App() {
           distanceFromHome,
         });
 
-        // Quick geocode first 3 vacation photos WITH location to show during scanning
-        if (!isRefresh && geocodedCount < 3 && info.location) {
+        // Quick geocode first vacation photo WITH location to show during scanning
+        if (!isRefresh && geocodedCount < 1 && info.location) {
           geocodedCount++;
-          console.log('Starting early geocode #', geocodedCount);
           try {
             const results = await Location.reverseGeocodeAsync({
               latitude: Number(info.location.latitude),
@@ -888,8 +938,13 @@ export default function App() {
             console.log('Early geocode error:', e.message);
           }
         }
-      } catch (e) {
-        console.log('Error processing photo:', e.message);
+      }
+
+      // Update progress after each batch
+      if (!isRefresh) {
+        const percent = Math.round((processedCount / assetsToProcess.length) * 100);
+        setLoadingPercent(percent);
+        setLoadingProgress(`Scanning photos... ${processedCount}/${assetsToProcess.length}`);
       }
     }
 
@@ -916,16 +971,19 @@ export default function App() {
     setLoadingProgress('Clustering vacations...');
     const clustered = clusterPhotos(allPhotos);
 
-    // Only geocode clusters that don't have location names yet
+    // Geocode clusters in parallel for faster loading
     setLoadingProgress('Getting location names...');
-    for (const cluster of clustered) {
-      if (cluster.location && cluster.location.latitude != null && !cluster.locationName) {
+    const clustersToGeocode = clustered.filter(
+      c => c.location && c.location.latitude != null && !c.locationName
+    );
+
+    if (clustersToGeocode.length > 0) {
+      const geocodePromises = clustersToGeocode.map(async (cluster) => {
         try {
           const results = await Location.reverseGeocodeAsync({
             latitude: Number(cluster.location.latitude),
             longitude: Number(cluster.location.longitude),
           });
-          console.log('Geocode results:', JSON.stringify(results));
           if (results && results.length > 0) {
             const place = results[0];
             const name = place.city || place.district || place.subregion || place.name;
@@ -935,12 +993,18 @@ export default function App() {
               .filter(Boolean)
               .join(', ');
             console.log('Location name:', cluster.locationName);
-            // Update loading screen with detected location
-            setDetectedLocation(cluster.locationName);
           }
         } catch (e) {
           console.log('Geocoding error:', e.message);
         }
+      });
+
+      await Promise.all(geocodePromises);
+
+      // Update detected location with the first cluster's name
+      const firstWithName = clustered.find(c => c.locationName);
+      if (firstWithName) {
+        setDetectedLocation(firstWithName.locationName);
       }
     }
 
@@ -1209,6 +1273,14 @@ export default function App() {
             )}
             <ActivityIndicator size="large" color="#6366F1" style={{ marginTop: recentPhotos.length > 0 ? 12 : 0 }} />
             <Text style={styles.splashLoadingText}>{loadingProgress}</Text>
+            {loadingPercent > 0 && (
+              <>
+                <View style={styles.progressBarContainer}>
+                  <View style={[styles.progressBarFill, { width: `${loadingPercent}%` }]} />
+                </View>
+                <Text style={styles.progressPercent}>{loadingPercent}%</Text>
+              </>
+            )}
           </View>
         </View>
       </View>
