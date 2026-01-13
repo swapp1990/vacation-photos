@@ -1,5 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
-import { useState, useEffect, useCallback, memo } from 'react';
+import { useState, useEffect, useCallback, memo, useRef } from 'react';
 import {
   Text,
   View,
@@ -12,6 +12,7 @@ import {
   RefreshControl,
   Linking,
   Platform,
+  AppState,
 } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
@@ -768,6 +769,29 @@ export default function App() {
       runBackgroundFaceDetection();
     }
   }, [loading, clusters]);
+
+  // Auto-check for new photos when app comes to foreground
+  const lastRefreshRef = useRef(0);
+  const REFRESH_DEBOUNCE_MS = 30000; // 30 seconds minimum between auto-refreshes
+
+  useEffect(() => {
+    if (!homeLocation || photos.length === 0) return;
+
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'active') {
+        const now = Date.now();
+        if (now - lastRefreshRef.current > REFRESH_DEBOUNCE_MS) {
+          if (!loading && !loadingMore && !refreshing) {
+            lastRefreshRef.current = now;
+            console.log('App became active, checking for new photos...');
+            loadPhotos('refresh', homeLocation);
+          }
+        }
+      }
+    });
+
+    return () => subscription.remove();
+  }, [homeLocation, photos.length, loading, loadingMore, refreshing]);
 
   const runBackgroundFaceDetection = async () => {
     // Check if FaceDetector module is available
