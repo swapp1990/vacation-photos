@@ -39,6 +39,12 @@ import {
   rebuildClusters,
 } from './src/utils/photoCache';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import {
+  uriCache,
+  processAsset,
+  processPhotosInBatches,
+  geocodeClustersInParallel,
+} from './src/utils/photoProcessing';
 
 const ONBOARDING_KEY = 'onboarding_complete';
 
@@ -46,9 +52,6 @@ const ONBOARDING_KEY = 'onboarding_complete';
 const DEBUG_MODE = __DEV__;
 
 const { width } = Dimensions.get('window');
-
-// Global URI cache to avoid refetching photo URIs
-const uriCache = new Map();
 
 const MILES_FROM_HOME = 50;
 const KM_FROM_HOME = MILES_FROM_HOME * 1.60934;
@@ -958,24 +961,6 @@ export default function App() {
     // Process photos in parallel batches for much faster loading
     const BATCH_SIZE = 15;
 
-    // Helper to process a single asset
-    const processAsset = async (asset) => {
-      try {
-        const info = await MediaLibrary.getAssetInfoAsync(asset.id);
-        const photoUri = info.localUri || info.uri;
-
-        // Cache the URI for later use by thumbnails
-        if (photoUri) {
-          uriCache.set(asset.id, photoUri);
-        }
-
-        return { asset, info, photoUri };
-      } catch (e) {
-        console.log('Error processing photo:', e.message);
-        return null;
-      }
-    };
-
     for (let i = 0; i < assetsToProcess.length; i += BATCH_SIZE) {
       const batch = assetsToProcess.slice(i, i + BATCH_SIZE);
 
@@ -1076,41 +1061,37 @@ export default function App() {
     setLoadingProgress('Clustering vacations...');
     const clustered = clusterPhotos(allPhotos);
 
+    // Preserve locationName from existing clusters to avoid re-geocoding
+    if (isLoadMore && clusters.length > 0) {
+      for (const newCluster of clustered) {
+        if (!newCluster.location) continue;
+
+        for (const oldCluster of clusters) {
+          if (!oldCluster.location || !oldCluster.locationName) continue;
+
+          const distance = getDistanceKm(
+            newCluster.location.latitude,
+            newCluster.location.longitude,
+            oldCluster.location.latitude,
+            oldCluster.location.longitude
+          );
+
+          if (distance < 10) { // Within 10km = same location
+            newCluster.locationName = oldCluster.locationName;
+            break;
+          }
+        }
+      }
+    }
+
     // Geocode clusters in parallel for faster loading
     setLoadingProgress('Getting location names...');
-    const clustersToGeocode = clustered.filter(
-      c => c.location && c.location.latitude != null && !c.locationName
-    );
+    await geocodeClustersInParallel(clustered);
 
-    if (clustersToGeocode.length > 0) {
-      const geocodePromises = clustersToGeocode.map(async (cluster) => {
-        try {
-          const results = await Location.reverseGeocodeAsync({
-            latitude: Number(cluster.location.latitude),
-            longitude: Number(cluster.location.longitude),
-          });
-          if (results && results.length > 0) {
-            const place = results[0];
-            const name = place.city || place.district || place.subregion || place.name;
-            const region = place.region || place.administrativeArea;
-            const country = place.country || place.isoCountryCode;
-            cluster.locationName = [name, region, country]
-              .filter(Boolean)
-              .join(', ');
-            console.log('Location name:', cluster.locationName);
-          }
-        } catch (e) {
-          console.log('Geocoding error:', e.message);
-        }
-      });
-
-      await Promise.all(geocodePromises);
-
-      // Update detected location with the first cluster's name
-      const firstWithName = clustered.find(c => c.locationName);
-      if (firstWithName) {
-        setDetectedLocation(firstWithName.locationName);
-      }
+    // Update detected location with the first cluster's name
+    const firstWithName = clustered.find(c => c.locationName);
+    if (firstWithName) {
+      setDetectedLocation(firstWithName.locationName);
     }
 
     setClusters(clustered);
