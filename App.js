@@ -174,71 +174,103 @@ function clusterPhotos(photosWithMeta) {
   // First, infer missing locations based on surrounding photos
   const photosWithInferred = inferMissingLocations(photosWithMeta);
 
-  // Cluster by location only (within 30 miles = same location)
-  const clusters = [];
-  let unknownLocationCluster = null;
+  // Step 1: Group photos by day and calculate each day's location
+  const dayGroups = {};
+  let unknownLocationPhotos = [];
 
   for (const photo of photosWithInferred) {
-    const photoDate = new Date(photo.creationTime);
-
-    // Photos without location go to a separate cluster
     if (!photo.location) {
-      if (!unknownLocationCluster) {
-        unknownLocationCluster = {
-          id: 'cluster-unknown',
-          photos: [photo],
-          startDate: photoDate,
-          endDate: photoDate,
-          location: null,
-          locationName: 'Unknown Location',
-        };
-      } else {
-        unknownLocationCluster.photos.push(photo);
-        if (photoDate < unknownLocationCluster.startDate) unknownLocationCluster.startDate = photoDate;
-        if (photoDate > unknownLocationCluster.endDate) unknownLocationCluster.endDate = photoDate;
-      }
+      unknownLocationPhotos.push(photo);
       continue;
     }
 
-    // Find existing cluster within 30 miles
-    let foundCluster = null;
+    const dateKey = new Date(photo.creationTime).toDateString();
+    if (!dayGroups[dateKey]) {
+      dayGroups[dateKey] = [];
+    }
+    dayGroups[dateKey].push(photo);
+  }
+
+  // Step 2: Create day-clusters with each day's centroid location
+  const dayClusters = [];
+  for (const dateKey in dayGroups) {
+    const photos = dayGroups[dateKey];
+    const date = new Date(dateKey);
+
+    // Calculate centroid for this day's photos
+    const avgLat = photos.reduce((sum, p) => sum + Number(p.location.latitude), 0) / photos.length;
+    const avgLon = photos.reduce((sum, p) => sum + Number(p.location.longitude), 0) / photos.length;
+
+    dayClusters.push({
+      id: `day-${dayClusters.length}`,
+      photos: photos,
+      startDate: date,
+      endDate: date,
+      location: { latitude: avgLat, longitude: avgLon },
+      locationName: null,
+    });
+  }
+
+  // Sort day-clusters by date
+  dayClusters.sort((a, b) => a.startDate - b.startDate);
+
+  // Step 3: Merge adjacent day-clusters that are within 50km
+  const CLUSTER_THRESHOLD_KM = 50;
+  const clusters = [];
+
+  for (const dayCluster of dayClusters) {
+    let merged = false;
+
+    // Try to merge with an existing cluster
     for (const cluster of clusters) {
-      if (cluster.location) {
-        const distance = getDistanceKm(
-          photo.location.latitude,
-          photo.location.longitude,
-          cluster.location.latitude,
-          cluster.location.longitude
-        );
-        if (distance <= 48) { // ~30 miles
-          foundCluster = cluster;
-          break;
+      const distance = getDistanceKm(
+        dayCluster.location.latitude,
+        dayCluster.location.longitude,
+        cluster.location.latitude,
+        cluster.location.longitude
+      );
+
+      // Check if within distance AND dates are adjacent (within 1 day)
+      const dayGap = Math.abs(dayCluster.startDate - cluster.endDate) / (1000 * 60 * 60 * 24);
+
+      if (distance <= CLUSTER_THRESHOLD_KM && dayGap <= 1) {
+        // Merge into existing cluster
+        cluster.photos = [...cluster.photos, ...dayCluster.photos];
+        if (dayCluster.endDate > cluster.endDate) {
+          cluster.endDate = dayCluster.endDate;
         }
+        // Keep the original cluster's location (from first day)
+        merged = true;
+        break;
       }
     }
 
-    if (foundCluster) {
-      foundCluster.photos.push(photo);
-      if (photoDate < foundCluster.startDate) foundCluster.startDate = photoDate;
-      if (photoDate > foundCluster.endDate) foundCluster.endDate = photoDate;
-    } else {
+    if (!merged) {
       clusters.push({
         id: `cluster-${clusters.length}`,
-        photos: [photo],
-        startDate: photoDate,
-        endDate: photoDate,
-        location: photo.location,
+        photos: [...dayCluster.photos],
+        startDate: dayCluster.startDate,
+        endDate: dayCluster.endDate,
+        location: dayCluster.location,
         locationName: null,
       });
     }
   }
 
   // Add unknown location cluster if it exists
-  if (unknownLocationCluster) {
-    clusters.push(unknownLocationCluster);
+  if (unknownLocationPhotos.length > 0) {
+    const dates = unknownLocationPhotos.map(p => new Date(p.creationTime));
+    clusters.push({
+      id: 'cluster-unknown',
+      photos: unknownLocationPhotos,
+      startDate: new Date(Math.min(...dates)),
+      endDate: new Date(Math.max(...dates)),
+      location: null,
+      locationName: 'Unknown Location',
+    });
   }
 
-  // Sort photos within each cluster by date
+  // Finalize clusters
   for (const cluster of clusters) {
     cluster.photos.sort((a, b) => new Date(a.creationTime) - new Date(b.creationTime));
     const days = Math.ceil((cluster.endDate - cluster.startDate) / (1000 * 60 * 60 * 24)) + 1;
