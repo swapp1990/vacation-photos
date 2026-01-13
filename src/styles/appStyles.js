@@ -284,6 +284,16 @@ export default StyleSheet.create({
     borderRadius: borderRadius.sm,
     backgroundColor: colors.divider,
   },
+  // iCloud placeholder for photos that can't be loaded
+  icloudPlaceholder: {
+    backgroundColor: '#E8EDF3',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  icloudIcon: {
+    fontSize: 24,
+    opacity: 0.6,
+  },
 
   // Messages & Buttons
   message: {

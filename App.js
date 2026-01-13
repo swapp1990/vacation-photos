@@ -13,6 +13,7 @@ import {
   Linking,
   Platform,
 } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
 import * as MediaLibrary from 'expo-media-library';
 import * as Location from 'expo-location';
@@ -27,7 +28,7 @@ try {
 }
 
 // Import reusable components and styles
-import { Screen } from './src/components';
+import { Screen, LocationSelectionScreen } from './src/components';
 import styles, { imageSize } from './src/styles/appStyles';
 import {
   loadCache,
@@ -354,25 +355,41 @@ function groupPhotosByDay(photos, tripStartDate) {
 
 const PhotoThumbnail = memo(({ photo, onPress, size = imageSize }) => {
   const [uri, setUri] = useState(() => uriCache.get(photo.id) || null);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
-    if (uri) return; // Already have URI from cache
+    if (uri) return;
+
+    const cached = uriCache.get(photo.id);
+    if (cached) {
+      setUri(cached);
+      return;
+    }
 
     let mounted = true;
-    MediaLibrary.getAssetInfoAsync(photo.id).then((info) => {
-      if (mounted) {
+    MediaLibrary.getAssetInfoAsync(photo.id)
+      .then((info) => {
         const photoUri = info.localUri || info.uri;
-        uriCache.set(photo.id, photoUri); // Cache the URI
-        setUri(photoUri);
-      }
-    });
-    return () => {
-      mounted = false;
-    };
+        if (photoUri) {
+          uriCache.set(photo.id, photoUri);
+        }
+        if (mounted) {
+          setUri(photoUri);
+        }
+      })
+      .catch((err) => {
+        if (mounted) setLoadError(true);
+      });
+    return () => { mounted = false; };
   }, [photo.id, uri]);
 
-  if (!uri) {
-    return <View style={[styles.thumbnail, { width: size, height: size }]} />;
+  // Show iCloud placeholder if image failed to load
+  if (loadError || !uri) {
+    return (
+      <View style={[styles.thumbnail, styles.icloudPlaceholder, { width: size, height: size }]}>
+        {loadError && <Text style={styles.icloudIcon}>☁️</Text>}
+      </View>
+    );
   }
 
   return (
@@ -380,6 +397,7 @@ const PhotoThumbnail = memo(({ photo, onPress, size = imageSize }) => {
       <Image
         source={{ uri }}
         style={[styles.thumbnail, { width: size, height: size }]}
+        onError={() => setLoadError(true)}
       />
     </TouchableOpacity>
   );
@@ -387,27 +405,53 @@ const PhotoThumbnail = memo(({ photo, onPress, size = imageSize }) => {
 
 const CollagePhoto = memo(({ photo, style, imageStyle }) => {
   const [uri, setUri] = useState(() => photo ? uriCache.get(photo.id) || null : null);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
-    if (!photo || uri) return; // No photo or already have URI
+    if (!photo || uri) return;
+
+    const cached = uriCache.get(photo.id);
+    if (cached) {
+      setUri(cached);
+      return;
+    }
 
     let mounted = true;
-    MediaLibrary.getAssetInfoAsync(photo.id).then((info) => {
-      if (mounted) {
+    MediaLibrary.getAssetInfoAsync(photo.id)
+      .then((info) => {
         const photoUri = info.localUri || info.uri;
-        uriCache.set(photo.id, photoUri);
-        setUri(photoUri);
-      }
-    });
-    return () => {
-      mounted = false;
-    };
+        if (photoUri) {
+          uriCache.set(photo.id, photoUri);
+        }
+        if (mounted) {
+          setUri(photoUri);
+        }
+      })
+      .catch((err) => {
+        if (mounted) setLoadError(true);
+      });
+    return () => { mounted = false; };
   }, [photo?.id, uri]);
+
+  // Show iCloud placeholder if image failed to load
+  if (loadError) {
+    return (
+      <View style={style}>
+        <View style={[imageStyle, styles.icloudPlaceholder]}>
+          <Text style={styles.icloudIcon}>☁️</Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={style}>
       {uri ? (
-        <Image source={{ uri }} style={imageStyle} />
+        <Image
+          source={{ uri }}
+          style={imageStyle}
+          onError={() => setLoadError(true)}
+        />
       ) : (
         <View style={[imageStyle, { backgroundColor: '#E2E8F0' }]} />
       )}
@@ -545,6 +589,7 @@ export default function App() {
   const [photosWithFaces, setPhotosWithFaces] = useState({}); // Map of photoId -> hasFaces
   const [faceDetectionRunning, setFaceDetectionRunning] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(null); // null = loading, true = show, false = skip
+  const [showLocationSelection, setShowLocationSelection] = useState(false);
 
   useEffect(() => {
     checkOnboarding();
@@ -567,7 +612,19 @@ export default function App() {
   const handleGetStarted = async () => {
     setShowOnboarding(false);
     await AsyncStorage.setItem(ONBOARDING_KEY, 'true');
-    initializeApp();
+    setShowLocationSelection(true);
+  };
+
+  const handleLocationSelected = async (location) => {
+    setShowLocationSelection(false);
+    const home = {
+      latitude: location.latitude,
+      longitude: location.longitude,
+    };
+    setHomeLocation(home);
+    setDetectedLocation(location.displayName);
+    // Pass home directly to avoid stale state issues
+    initializeApp(home);
   };
 
   // Background face detection - runs after initial load is complete
@@ -661,7 +718,7 @@ export default function App() {
     console.log(`Face detection complete: ${photosWithFacesCount} photos with faces out of ${processedCount} checked`);
   };
 
-  const initializeApp = async () => {
+  const initializeApp = async (selectedHome = null) => {
     // First, try to load cached data
     const cached = await loadCache();
     if (cached && cached.photos && cached.clusters) {
@@ -680,12 +737,16 @@ export default function App() {
       setCacheLoaded(true);
     }
     // Then request permissions (will refresh if needed)
-    requestPermissions(cached);
+    // Pass selectedHome if provided (from location selection), or use cached
+    requestPermissions(cached, selectedHome);
   };
 
-  const requestPermissions = async (cached) => {
+  const requestPermissions = async (cached, selectedHome = null) => {
     const { status: locationStatus } = await Location.requestForegroundPermissionsAsync();
-    let home = homeLocation;
+
+    // Priority: selectedHome > cached.homeLocation > homeLocation state > GPS auto-detect
+    let home = selectedHome || cached?.homeLocation || homeLocation;
+
     if (locationStatus === 'granted' && !home) {
       setLoadingProgress('Getting your location...');
       const location = await Location.getCurrentPositionAsync({});
@@ -729,7 +790,7 @@ export default function App() {
 
     const queryOptions = {
       mediaType: 'photo',
-      first: isRefresh ? 500 : 1000, // Smaller batch for refresh
+      first: isRefresh ? 500 : 300, // Smaller batch to avoid skipping photos on early break
       sortBy: ['creationTime'],
     };
 
@@ -830,7 +891,6 @@ export default function App() {
       } catch (e) {
         console.log('Error processing photo:', e.message);
       }
-      if (!isRefresh && vacationPhotos.length >= 200) break;
     }
 
     console.log(`Processed: ${processedCount}, No location: ${noLocationCount}, Too close (<${MILES_FROM_HOME}mi): ${tooCloseCount}, Vacation photos: ${vacationPhotos.length}`);
@@ -938,13 +998,15 @@ export default function App() {
 
   const handleClearCache = async () => {
     await clearCache();
-    await AsyncStorage.removeItem(ONBOARDING_KEY); // Reset onboarding too
+    await AsyncStorage.removeItem(ONBOARDING_KEY);
     setPhotos([]);
     setClusters([]);
     setCacheLoaded(false);
     setRecentPhotos([]);
     setDetectedLocation(null);
-    setShowOnboarding(true); // Show onboarding again
+    setHomeLocation(null);
+    setShowLocationSelection(false);
+    setShowOnboarding(true);
   };
 
   const renderCluster = ({ item }) => {
@@ -1007,6 +1069,14 @@ export default function App() {
             </View>
           </SafeAreaView>
         </View>
+      </SafeAreaProvider>
+    );
+  }
+
+  if (showLocationSelection) {
+    return (
+      <SafeAreaProvider>
+        <LocationSelectionScreen onLocationSelected={handleLocationSelected} />
       </SafeAreaProvider>
     );
   }
