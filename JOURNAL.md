@@ -1,5 +1,13 @@
 # Development Journal
 
+## 2026-01-13: Cluster merging and performance improvements
+
+- Added distance badge on cluster cards showing miles from home with travel emoji (car/train/plane/globe/rocket)
+- Implemented parallel photo processing (batch size 15) for ~10x faster initial loading
+- Added visual progress bar with percentage during photo scanning
+- Parallelized cluster geocoding for faster location name resolution
+- Fixed bug where same-location trips with overlapping dates weren't merging into one cluster
+
 ## 2026-01-13: Handle iCloud photos gracefully when device storage is low
 
 ### Problem

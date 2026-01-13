@@ -246,13 +246,89 @@ function clusterPhotos(photosWithMeta) {
     cluster.days = days;
   }
 
+  // Merge clusters that are at the same location AND have overlapping dates
+  const mergedClusters = mergeClusters(clusters);
+
   // Sort clusters by most recent first, but keep unknown location cluster last
-  clusters.sort((a, b) => {
+  mergedClusters.sort((a, b) => {
     // Unknown location cluster always goes last
     if (a.id === 'cluster-unknown') return 1;
     if (b.id === 'cluster-unknown') return -1;
     return b.endDate - a.endDate;
   });
+
+  return mergedClusters;
+}
+
+// Check if two date ranges overlap or are adjacent (within 1 day)
+function datesOverlapOrAdjacent(start1, end1, start2, end2) {
+  const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+  // Extend ranges by 1 day to catch adjacent trips
+  const extendedStart1 = new Date(start1.getTime() - ONE_DAY_MS);
+  const extendedEnd1 = new Date(end1.getTime() + ONE_DAY_MS);
+  // Check if ranges overlap
+  return extendedStart1 <= end2 && extendedEnd1 >= start2;
+}
+
+// Merge clusters that are at the same location AND have overlapping dates
+function mergeClusters(clusters) {
+  const MERGE_THRESHOLD_KM = 50; // ~31 miles - slightly higher than clustering to catch edge cases
+  let merged = true;
+
+  while (merged) {
+    merged = false;
+    for (let i = 0; i < clusters.length; i++) {
+      if (!clusters[i].location) continue; // Skip unknown location cluster
+
+      for (let j = i + 1; j < clusters.length; j++) {
+        if (!clusters[j].location) continue;
+
+        // Check location proximity
+        const distance = getDistanceKm(
+          clusters[i].location.latitude,
+          clusters[i].location.longitude,
+          clusters[j].location.latitude,
+          clusters[j].location.longitude
+        );
+
+        // Check date overlap - only merge if same location AND dates overlap
+        const datesMatch = datesOverlapOrAdjacent(
+          clusters[i].startDate, clusters[i].endDate,
+          clusters[j].startDate, clusters[j].endDate
+        );
+
+        if (distance <= MERGE_THRESHOLD_KM && datesMatch) {
+          // Merge cluster j into cluster i
+          clusters[i].photos = [...clusters[i].photos, ...clusters[j].photos];
+          clusters[i].photos.sort((a, b) => a.creationTime - b.creationTime);
+
+          // Update date range
+          if (clusters[j].startDate < clusters[i].startDate) {
+            clusters[i].startDate = clusters[j].startDate;
+          }
+          if (clusters[j].endDate > clusters[i].endDate) {
+            clusters[i].endDate = clusters[j].endDate;
+          }
+
+          // Recalculate days
+          clusters[i].days = Math.ceil(
+            (clusters[i].endDate - clusters[i].startDate) / (1000 * 60 * 60 * 24)
+          ) + 1;
+
+          // Keep locationName if one has it
+          if (!clusters[i].locationName && clusters[j].locationName) {
+            clusters[i].locationName = clusters[j].locationName;
+          }
+
+          // Remove merged cluster
+          clusters.splice(j, 1);
+          merged = true;
+          break;
+        }
+      }
+      if (merged) break;
+    }
+  }
 
   return clusters;
 }
