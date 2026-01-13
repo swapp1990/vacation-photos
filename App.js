@@ -844,17 +844,14 @@ export default function App() {
   const requestPermissions = async (cached, selectedHome = null) => {
     const { status: locationStatus } = await Location.requestForegroundPermissionsAsync();
 
-    // Priority: selectedHome > cached.homeLocation > homeLocation state > GPS auto-detect
+    // Priority: selectedHome > cached.homeLocation > homeLocation state
     let home = selectedHome || cached?.homeLocation || homeLocation;
 
+    // If no home location is set, show location selection screen instead of auto-detecting
     if (locationStatus === 'granted' && !home) {
-      setLoadingProgress('Getting your location...');
-      const location = await Location.getCurrentPositionAsync({});
-      home = {
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
-      };
-      setHomeLocation(home);
+      console.log('[HOME] No home found, showing location selection...');
+      setShowLocationSelection(true);
+      return; // Don't proceed until user selects home
     }
 
     const { status: mediaStatus } = await MediaLibrary.requestPermissionsAsync();
