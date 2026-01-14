@@ -1287,19 +1287,9 @@ export default function App() {
     );
   }
 
-  // Year detail view - show clusters for a specific year
-  if (selectedYear) {
-    return (
-      <YearDetailView
-        year={selectedYear}
-        clusters={clusters}
-        photosWithFaces={photosWithFaces}
-        onBack={() => setSelectedYear(null)}
-        onViewCluster={handleViewAll}
-      />
-    );
-  }
-
+  // Cluster detail view - show photos for a specific cluster
+  // NOTE: This must come before selectedYear check so clicking a cluster
+  // from within the year view shows the cluster detail on top
   if (selectedCluster) {
     const vibe = getLocationVibe(selectedCluster.locationName);
     const locationCity = selectedCluster.locationName?.split(',')[0] || 'Trip';
@@ -1457,6 +1447,19 @@ export default function App() {
           </Modal>
         </SafeAreaView>
       </SafeAreaProvider>
+    );
+  }
+
+  // Year detail view - show clusters for a specific year
+  if (selectedYear) {
+    return (
+      <YearDetailView
+        year={selectedYear}
+        clusters={clusters}
+        photosWithFaces={photosWithFaces}
+        onBack={() => setSelectedYear(null)}
+        onViewCluster={handleViewAll}
+      />
     );
   }
 
