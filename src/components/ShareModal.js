@@ -9,35 +9,95 @@ import {
   Alert,
   Linking,
   ActivityIndicator,
+  ScrollView,
+  Image,
+  Dimensions,
 } from 'react-native';
 import * as Contacts from 'expo-contacts';
+import * as MediaLibrary from 'expo-media-library';
 import { StyleSheet } from 'react-native';
 import { colors, spacing, typography, borderRadius } from '../styles/theme';
+import { shareVacationCluster, MAX_PHOTOS } from '../services/photoUploadService';
+import { checkCloudKitAvailability } from '../services/cloudKitService';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const PREVIEW_PHOTO_SIZE = 80;
 
 const APP_STORE_LINK = 'https://apps.apple.com/app/id6756803475';
 
-export default function ShareModal({ visible, onClose, locationName, dateRange, photoCount }) {
+// Screen states
+const SCREEN = {
+  CONTACTS: 'contacts',
+  UPLOAD_CONFIRM: 'uploadConfirm',
+  UPLOADING: 'uploading',
+  SEND_CONFIRM: 'sendConfirm',
+};
+
+export default function ShareModal({ visible, onClose, cluster }) {
+  const [screen, setScreen] = useState(SCREEN.CONTACTS);
   const [contacts, setContacts] = useState([]);
   const [filteredContacts, setFilteredContacts] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [permissionDenied, setPermissionDenied] = useState(false);
   const [selectedContact, setSelectedContact] = useState(null);
-  const [showConfirmation, setShowConfirmation] = useState(false);
 
-  // Generate the share message
-  const shareMessage = `Check out my vacation photos from ${locationName}! 📸\n\n${dateRange} · ${photoCount} photos\n\nDownload Vacation Photos to see more:\n${APP_STORE_LINK}`;
+  // Upload state
+  const [uploadProgress, setUploadProgress] = useState({ phase: '', current: 0, total: 0 });
+  const [shareResult, setShareResult] = useState(null);
+  const [previewPhotoUris, setPreviewPhotoUris] = useState([]);
+
+  // Derived values
+  const locationName = cluster?.locationName || 'Vacation Photos';
+  const photoCount = cluster?.photos?.length || 0;
+  const photosToShare = Math.min(photoCount, MAX_PHOTOS);
+
+  const formatDateRange = (start, end) => {
+    if (!start || !end) return '';
+    const options = { month: 'short', day: 'numeric' };
+    const startStr = start.toLocaleDateString('en-US', options);
+    const endStr = end.toLocaleDateString('en-US', options);
+    const year = start.getFullYear();
+    if (startStr === endStr) return `${startStr}, ${year}`;
+    return `${startStr} - ${endStr}, ${year}`;
+  };
+
+  const dateRange = formatDateRange(cluster?.startDate, cluster?.endDate);
 
   useEffect(() => {
     if (visible) {
-      loadContacts();
-    } else {
-      // Reset state when modal closes
-      setSearchQuery('');
+      setScreen(SCREEN.CONTACTS);
       setSelectedContact(null);
-      setShowConfirmation(false);
+      setShareResult(null);
+      setUploadProgress({ phase: '', current: 0, total: 0 });
+      setPreviewPhotoUris([]);
+      loadContacts();
+      loadPreviewPhotos();
+    } else {
+      setSearchQuery('');
     }
   }, [visible]);
+
+  // Load photo URIs for preview
+  const loadPreviewPhotos = async () => {
+    if (!cluster?.photos?.length) return;
+
+    const previewPhotos = cluster.photos.slice(0, 8); // Show first 8 photos
+    const uris = [];
+
+    for (const photo of previewPhotos) {
+      try {
+        const info = await MediaLibrary.getAssetInfoAsync(photo.id);
+        if (info.localUri || info.uri) {
+          uris.push(info.localUri || info.uri);
+        }
+      } catch (e) {
+        // Skip failed photos
+      }
+    }
+
+    setPreviewPhotoUris(uris);
+  };
 
   useEffect(() => {
     if (searchQuery.trim() === '') {
@@ -68,7 +128,6 @@ export default function ShareModal({ visible, onClose, locationName, dateRange, 
         sort: Contacts.SortTypes.FirstName,
       });
 
-      // Filter contacts that have phone numbers
       const contactsWithPhone = data.filter(
         contact => contact.phoneNumbers && contact.phoneNumbers.length > 0
       );
@@ -83,21 +142,77 @@ export default function ShareModal({ visible, onClose, locationName, dateRange, 
     setLoading(false);
   };
 
-  const handleContactSelect = (contact) => {
+  const handleContactSelect = async (contact) => {
     setSelectedContact(contact);
-    setShowConfirmation(true);
-  };
 
-  const handleSendMessage = async () => {
-    if (!selectedContact || !selectedContact.phoneNumbers?.[0]?.number) {
-      Alert.alert('Error', 'No phone number available for this contact');
+    // Check CloudKit availability
+    const availability = await checkCloudKitAvailability();
+    console.log('CloudKit availability:', availability);
+
+    if (!availability.available) {
+      if (availability.status === 'noAccount') {
+        Alert.alert(
+          'iCloud Required',
+          'Please sign in to iCloud in Settings to share photos.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Open Settings', onPress: () => Linking.openSettings() },
+          ]
+        );
+        return;
+      }
+      if (availability.status === 'moduleNotLoaded') {
+        Alert.alert(
+          'Feature Not Available',
+          'Photo sharing requires a development build. The CloudKit module is not loaded.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+      // Show detailed error for debugging
+      Alert.alert(
+        'CloudKit Error',
+        `Status: ${availability.status}\n${availability.error || 'Please try again later.'}`,
+        [{ text: 'OK' }]
+      );
       return;
     }
 
-    // Clean phone number (remove spaces, dashes, etc.)
+    setScreen(SCREEN.UPLOAD_CONFIRM);
+  };
+
+  const handleStartUpload = async () => {
+    setScreen(SCREEN.UPLOADING);
+
+    try {
+      const result = await shareVacationCluster(cluster, (phase, current, total) => {
+        setUploadProgress({ phase, current, total });
+      });
+
+      if (result.success) {
+        setShareResult(result);
+        setScreen(SCREEN.SEND_CONFIRM);
+      } else {
+        Alert.alert('Upload Failed', result.error || 'Failed to upload photos. Please try again.');
+        setScreen(SCREEN.UPLOAD_CONFIRM);
+      }
+    } catch (error) {
+      console.log('Upload error:', error);
+      Alert.alert('Error', 'An unexpected error occurred. Please try again.');
+      setScreen(SCREEN.UPLOAD_CONFIRM);
+    }
+  };
+
+  const handleSendMessage = async () => {
+    if (!selectedContact || !selectedContact.phoneNumbers?.[0]?.number || !shareResult) {
+      Alert.alert('Error', 'Unable to send message');
+      return;
+    }
+
     const phoneNumber = selectedContact.phoneNumbers[0].number.replace(/[\s\-\(\)]/g, '');
 
-    // Create WhatsApp URL
+    const shareMessage = `Check out my vacation photos from ${locationName}! 📸\n\n${dateRange} · ${shareResult.photosUploaded} photos\n\nView photos in the app:\n${shareResult.shareLink}\n\nDon't have the app? Download it here:\n${APP_STORE_LINK}`;
+
     const whatsappUrl = `whatsapp://send?phone=${phoneNumber}&text=${encodeURIComponent(shareMessage)}`;
 
     try {
@@ -109,7 +224,7 @@ export default function ShareModal({ visible, onClose, locationName, dateRange, 
       } else {
         Alert.alert(
           'WhatsApp Not Available',
-          'WhatsApp is not installed on this device. Would you like to share via SMS instead?',
+          'Would you like to share via SMS instead?',
           [
             { text: 'Cancel', style: 'cancel' },
             {
@@ -129,42 +244,73 @@ export default function ShareModal({ visible, onClose, locationName, dateRange, 
     }
   };
 
-  const renderContact = ({ item }) => {
-    const phoneNumber = item.phoneNumbers?.[0]?.number || 'No number';
+  const renderContact = ({ item }) => (
+    <TouchableOpacity
+      style={styles.contactItem}
+      onPress={() => handleContactSelect(item)}
+    >
+      <View style={styles.contactAvatar}>
+        <Text style={styles.contactAvatarText}>
+          {item.name?.charAt(0)?.toUpperCase() || '?'}
+        </Text>
+      </View>
+      <View style={styles.contactInfo}>
+        <Text style={styles.contactName}>{item.name || 'Unknown'}</Text>
+        <Text style={styles.contactPhone}>{item.phoneNumbers?.[0]?.number || 'No number'}</Text>
+      </View>
+    </TouchableOpacity>
+  );
 
-    return (
-      <TouchableOpacity
-        style={styles.contactItem}
-        onPress={() => handleContactSelect(item)}
-      >
-        <View style={styles.contactAvatar}>
-          <Text style={styles.contactAvatarText}>
-            {item.name?.charAt(0)?.toUpperCase() || '?'}
-          </Text>
-        </View>
-        <View style={styles.contactInfo}>
-          <Text style={styles.contactName}>{item.name || 'Unknown'}</Text>
-          <Text style={styles.contactPhone}>{phoneNumber}</Text>
-        </View>
-      </TouchableOpacity>
-    );
-  };
-
-  // Confirmation Dialog
-  if (showConfirmation && selectedContact) {
+  // Upload Confirmation Screen
+  if (screen === SCREEN.UPLOAD_CONFIRM && selectedContact) {
     return (
       <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
         <View style={styles.container}>
           <View style={styles.header}>
-            <TouchableOpacity onPress={() => setShowConfirmation(false)}>
+            <TouchableOpacity onPress={() => setScreen(SCREEN.CONTACTS)}>
               <Text style={styles.backButton}>← Back</Text>
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>Confirm Share</Text>
+            <Text style={styles.headerTitle}>Share Photos</Text>
             <View style={{ width: 60 }} />
           </View>
 
-          <View style={styles.confirmationContent}>
-            <Text style={styles.confirmationLabel}>Sending to:</Text>
+          <ScrollView style={styles.confirmationContent} showsVerticalScrollIndicator={false}>
+            {/* Photo Preview */}
+            <Text style={styles.previewLabel}>Photos to share</Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.photoPreviewScroll}
+              contentContainerStyle={styles.photoPreviewContainer}
+            >
+              {previewPhotoUris.map((uri, index) => (
+                <View key={index} style={styles.previewPhotoWrapper}>
+                  <Image source={{ uri }} style={styles.previewPhoto} />
+                  {index === previewPhotoUris.length - 1 && photosToShare > previewPhotoUris.length && (
+                    <View style={styles.previewMoreOverlay}>
+                      <Text style={styles.previewMoreText}>+{photosToShare - previewPhotoUris.length}</Text>
+                    </View>
+                  )}
+                </View>
+              ))}
+            </ScrollView>
+
+            {/* Trip Info Card */}
+            <View style={styles.shareInfoCard}>
+              <Text style={styles.shareInfoTitle}>{locationName}</Text>
+              <Text style={styles.shareInfoSubtitle}>{dateRange}</Text>
+              <View style={styles.shareInfoDivider} />
+              <Text style={styles.shareInfoDetail}>
+                {photosToShare} photo{photosToShare !== 1 ? 's' : ''} will be uploaded
+              </Text>
+              {photoCount > MAX_PHOTOS && (
+                <Text style={styles.shareInfoWarning}>
+                  (Limited to {MAX_PHOTOS} photos)
+                </Text>
+              )}
+            </View>
+
+            <Text style={styles.confirmationLabel}>Sharing with:</Text>
             <View style={styles.recipientCard}>
               <View style={styles.contactAvatar}>
                 <Text style={styles.contactAvatarText}>
@@ -179,9 +325,87 @@ export default function ShareModal({ visible, onClose, locationName, dateRange, 
               </View>
             </View>
 
-            <Text style={styles.confirmationLabel}>Message:</Text>
-            <View style={styles.messagePreview}>
-              <Text style={styles.messageText}>{shareMessage}</Text>
+            <TouchableOpacity style={styles.uploadButton} onPress={handleStartUpload}>
+              <Text style={styles.uploadButtonText}>Upload & Share</Text>
+            </TouchableOpacity>
+
+            <Text style={styles.uploadNote}>
+              Photos will be uploaded to iCloud and a link will be sent via WhatsApp
+            </Text>
+          </ScrollView>
+        </View>
+      </Modal>
+    );
+  }
+
+  // Uploading Screen
+  if (screen === SCREEN.UPLOADING) {
+    const progressPercent = uploadProgress.total > 0
+      ? Math.round((uploadProgress.current / uploadProgress.total) * 100)
+      : 0;
+
+    return (
+      <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
+        <View style={styles.container}>
+          <View style={styles.header}>
+            <View style={{ width: 60 }} />
+            <Text style={styles.headerTitle}>Uploading</Text>
+            <View style={{ width: 60 }} />
+          </View>
+
+          <View style={styles.uploadingContent}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={styles.uploadingTitle}>
+              {uploadProgress.phase === 'preparing' ? 'Preparing photos...' : 'Uploading photos...'}
+            </Text>
+            <Text style={styles.uploadingProgress}>
+              {uploadProgress.current} of {uploadProgress.total}
+            </Text>
+            <View style={styles.progressBarContainer}>
+              <View style={[styles.progressBar, { width: `${progressPercent}%` }]} />
+            </View>
+            <Text style={styles.uploadingNote}>Please keep the app open</Text>
+          </View>
+        </View>
+      </Modal>
+    );
+  }
+
+  // Send Confirmation Screen
+  if (screen === SCREEN.SEND_CONFIRM && shareResult && selectedContact) {
+    return (
+      <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
+        <View style={styles.container}>
+          <View style={styles.header}>
+            <TouchableOpacity onPress={onClose}>
+              <Text style={styles.cancelButton}>Done</Text>
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Ready to Share</Text>
+            <View style={{ width: 60 }} />
+          </View>
+
+          <View style={styles.confirmationContent}>
+            <View style={styles.successCard}>
+              <Text style={styles.successEmoji}>✅</Text>
+              <Text style={styles.successTitle}>Upload Complete!</Text>
+              <Text style={styles.successSubtitle}>
+                {shareResult.photosUploaded} photos uploaded successfully
+              </Text>
+            </View>
+
+            <Text style={styles.confirmationLabel}>Send link to:</Text>
+            <View style={styles.recipientCard}>
+              <View style={styles.contactAvatar}>
+                <Text style={styles.contactAvatarText}>
+                  {selectedContact.name?.charAt(0)?.toUpperCase() || '?'}
+                </Text>
+              </View>
+              <View style={styles.contactInfo}>
+                <Text style={styles.contactName}>{selectedContact.name}</Text>
+                <Text style={styles.contactPhone}>
+                  {selectedContact.phoneNumbers?.[0]?.number}
+                </Text>
+              </View>
             </View>
 
             <TouchableOpacity style={styles.sendButton} onPress={handleSendMessage}>
@@ -193,7 +417,7 @@ export default function ShareModal({ visible, onClose, locationName, dateRange, 
     );
   }
 
-  // Contacts List
+  // Contacts List Screen (default)
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
       <View style={styles.container}>
@@ -379,7 +603,7 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.text.muted,
   },
-  // Confirmation screen styles
+  // Confirmation screens
   confirmationContent: {
     flex: 1,
     padding: spacing.lg,
@@ -390,6 +614,46 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
     marginTop: spacing.lg,
   },
+  // Photo preview
+  previewLabel: {
+    ...typography.subhead,
+    color: colors.text.primary,
+    fontWeight: '600',
+    marginBottom: spacing.sm,
+  },
+  photoPreviewScroll: {
+    marginBottom: spacing.lg,
+    marginHorizontal: -spacing.lg,
+  },
+  photoPreviewContainer: {
+    paddingHorizontal: spacing.lg,
+    gap: spacing.sm,
+  },
+  previewPhotoWrapper: {
+    width: PREVIEW_PHOTO_SIZE,
+    height: PREVIEW_PHOTO_SIZE,
+    borderRadius: borderRadius.md,
+    overflow: 'hidden',
+  },
+  previewPhoto: {
+    width: '100%',
+    height: '100%',
+  },
+  previewMoreOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  previewMoreText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
   recipientCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -397,18 +661,118 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     borderRadius: borderRadius.lg,
   },
-  messagePreview: {
+  // Share info card
+  shareInfoCard: {
     backgroundColor: colors.surface,
-    padding: spacing.lg,
-    borderRadius: borderRadius.lg,
+    borderRadius: borderRadius.xl,
+    padding: spacing.xl,
+    alignItems: 'center',
   },
-  messageText: {
+  shareInfoEmoji: {
+    fontSize: 48,
+    marginBottom: spacing.md,
+  },
+  shareInfoTitle: {
+    ...typography.title2,
+    color: colors.text.primary,
+    textAlign: 'center',
+  },
+  shareInfoSubtitle: {
+    ...typography.body,
+    color: colors.text.muted,
+    marginTop: spacing.xs,
+  },
+  shareInfoDivider: {
+    width: 40,
+    height: 2,
+    backgroundColor: colors.border,
+    marginVertical: spacing.lg,
+  },
+  shareInfoDetail: {
     ...typography.body,
     color: colors.text.primary,
-    lineHeight: 22,
+  },
+  shareInfoWarning: {
+    ...typography.caption,
+    color: colors.text.muted,
+    marginTop: spacing.xs,
+  },
+  uploadButton: {
+    backgroundColor: colors.primary,
+    paddingVertical: spacing.lg,
+    borderRadius: borderRadius.lg,
+    alignItems: 'center',
+    marginTop: spacing.xl,
+  },
+  uploadButtonText: {
+    ...typography.body,
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 16,
+  },
+  uploadNote: {
+    ...typography.caption,
+    color: colors.text.muted,
+    textAlign: 'center',
+    marginTop: spacing.md,
+  },
+  // Uploading screen
+  uploadingContent: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.xxl,
+  },
+  uploadingTitle: {
+    ...typography.title2,
+    color: colors.text.primary,
+    marginTop: spacing.xl,
+  },
+  uploadingProgress: {
+    ...typography.body,
+    color: colors.text.muted,
+    marginTop: spacing.sm,
+  },
+  progressBarContainer: {
+    width: '100%',
+    height: 8,
+    backgroundColor: colors.surface,
+    borderRadius: 4,
+    marginTop: spacing.lg,
+    overflow: 'hidden',
+  },
+  progressBar: {
+    height: '100%',
+    backgroundColor: colors.primary,
+    borderRadius: 4,
+  },
+  uploadingNote: {
+    ...typography.caption,
+    color: colors.text.muted,
+    marginTop: spacing.lg,
+  },
+  // Success screen
+  successCard: {
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.xl,
+    padding: spacing.xl,
+    alignItems: 'center',
+  },
+  successEmoji: {
+    fontSize: 48,
+    marginBottom: spacing.md,
+  },
+  successTitle: {
+    ...typography.title2,
+    color: colors.text.primary,
+  },
+  successSubtitle: {
+    ...typography.body,
+    color: colors.text.muted,
+    marginTop: spacing.xs,
   },
   sendButton: {
-    backgroundColor: '#25D366', // WhatsApp green
+    backgroundColor: '#25D366',
     paddingVertical: spacing.lg,
     borderRadius: borderRadius.lg,
     alignItems: 'center',

@@ -42,6 +42,8 @@ import {
   CollagePhoto,
   formatDateRange,
 } from './src/components';
+import SharedVacationViewer from './src/components/SharedVacationViewer';
+import { parseShareLink } from './src/services/cloudKitService';
 import styles, { imageSize } from './src/styles/appStyles';
 import {
   loadCache,
@@ -545,6 +547,35 @@ export default function App() {
   const [selectedEditLocation, setSelectedEditLocation] = useState(null);
   const [searchingLocation, setSearchingLocation] = useState(false);
   const [selectedYear, setSelectedYear] = useState(null); // For viewing previous year's clusters
+  const [sharedVacationId, setSharedVacationId] = useState(null); // For viewing shared vacation from deep link
+
+  // Handle deep links for shared vacations
+  useEffect(() => {
+    // Handle deep link when app is already open
+    const handleDeepLink = (event) => {
+      const shareId = parseShareLink(event.url);
+      if (shareId) {
+        console.log('Deep link received:', shareId);
+        setSharedVacationId(shareId);
+      }
+    };
+
+    // Listen for incoming links
+    const subscription = Linking.addEventListener('url', handleDeepLink);
+
+    // Check if app was opened via deep link (cold start)
+    Linking.getInitialURL().then((url) => {
+      if (url) {
+        const shareId = parseShareLink(url);
+        if (shareId) {
+          console.log('App opened via deep link:', shareId);
+          setSharedVacationId(shareId);
+        }
+      }
+    });
+
+    return () => subscription.remove();
+  }, []);
 
   useEffect(() => {
     checkOnboarding();
@@ -1284,6 +1315,16 @@ export default function App() {
           resizeMode="contain"
         />
       </Screen.Fullscreen>
+    );
+  }
+
+  // Shared vacation viewer - show photos shared via deep link
+  if (sharedVacationId) {
+    return (
+      <SharedVacationViewer
+        shareId={sharedVacationId}
+        onClose={() => setSharedVacationId(null)}
+      />
     );
   }
 

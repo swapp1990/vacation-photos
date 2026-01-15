@@ -207,9 +207,7 @@ export function ClusterCard({ cluster, onViewAll, photosWithFaces = {} }) {
       <ShareModal
         visible={showShareModal}
         onClose={() => setShowShareModal(false)}
-        locationName={locationName}
-        dateRange={dateRange}
-        photoCount={cluster.photos.length}
+        cluster={cluster}
       />
     </>
   );

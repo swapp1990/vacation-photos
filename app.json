@@ -3,11 +3,12 @@
     "name": "Vacation Photos",
     "slug": "vacation-photos",
     "version": "1.1.0",
+    "scheme": "vacationphotos",
     "privacy": "public",
     "orientation": "portrait",
     "icon": "./assets/AppIcons/appstore.png",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "splash": {
       "image": "./assets/vacation-splash.png",
       "resizeMode": "cover",
@@ -17,6 +18,10 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.swapp1990.vacationphotos",
       "buildNumber": "2",
+      "entitlements": {
+        "com.apple.developer.icloud-container-identifiers": ["iCloud.com.swapp1990.vacationphotos"],
+        "com.apple.developer.icloud-services": ["CloudKit"]
+      },
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "This app needs access to your photos to display and organize your vacation memories.",
         "NSLocationWhenInUseUsageDescription": "This app needs your location to identify photos taken away from home.",
@@ -35,6 +40,9 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
+    "plugins": [
+      "./plugins/withCloudKit"
+    ],
     "extra": {
       "eas": {
         "projectId": "bae687ee-1832-4ba2-a0d3-cc61d4feaffa"
