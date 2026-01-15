@@ -2,7 +2,7 @@
   "expo": {
     "name": "Vacation Photos",
     "slug": "vacation-photos",
-    "version": "1.0.2",
+    "version": "1.1.0",
     "privacy": "public",
     "orientation": "portrait",
     "icon": "./assets/AppIcons/appstore.png",
