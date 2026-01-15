@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, Image } from 'react-native';
 import * as MediaLibrary from 'expo-media-library';
 import styles from '../styles/appStyles';
 import { uriCache } from '../utils/photoProcessing';
+import ShareModal from './ShareModal';
 
 // Format date range for display
 export function formatDateRange(start, end) {
@@ -131,6 +132,7 @@ function PhotoCollage({ photos, remaining, avgDistanceMiles }) {
 
 // Main cluster card component
 export function ClusterCard({ cluster, onViewAll, photosWithFaces = {} }) {
+  const [showShareModal, setShowShareModal] = useState(false);
   // Get the best photos for the collage, prioritizing ones with faces for the cover
   const getCollagePhotos = () => {
     const allPhotos = cluster.photos;
@@ -164,30 +166,52 @@ export function ClusterCard({ cluster, onViewAll, photosWithFaces = {} }) {
     : null;
   const avgDistanceMiles = avgDistanceKm ? Math.round(avgDistanceKm * 0.621371) : null;
 
-  return (
-    <TouchableOpacity style={styles.clusterCard} onPress={() => onViewAll(cluster)} activeOpacity={0.9}>
-      <PhotoCollage photos={photos} remaining={remaining} avgDistanceMiles={avgDistanceMiles} />
+  const dateRange = formatDateRange(cluster.startDate, cluster.endDate);
 
-      {/* Info Section */}
-      <View style={styles.clusterInfo}>
-        <View style={styles.clusterLocationRow}>
-          <Text style={styles.clusterLocationText}>{locationName}</Text>
+  const onSharePress = (e) => {
+    e.stopPropagation();
+    setShowShareModal(true);
+  };
+
+  return (
+    <>
+      <TouchableOpacity style={styles.clusterCard} onPress={() => onViewAll(cluster)} activeOpacity={0.9}>
+        <PhotoCollage photos={photos} remaining={remaining} avgDistanceMiles={avgDistanceMiles} />
+
+        {/* Info Section */}
+        <View style={styles.clusterInfo}>
+          <View style={styles.clusterLocationRow}>
+            <Text style={styles.clusterLocationText} numberOfLines={1}>{locationName}</Text>
+            <TouchableOpacity
+              onPress={onSharePress}
+              style={styles.shareButton}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Text style={styles.shareButtonText}>↗</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.clusterMeta}>
+            <Text style={styles.clusterMetaText}>{cluster.photos.length} photos</Text>
+            <Text style={styles.clusterMetaDot}>·</Text>
+            <Text style={styles.clusterMetaText}>{dateRange}</Text>
+            {cluster.days > 1 && (
+              <>
+                <Text style={styles.clusterMetaDot}>·</Text>
+                <Text style={styles.clusterMetaText}>{cluster.days} days</Text>
+              </>
+            )}
+          </View>
         </View>
-        <View style={styles.clusterMeta}>
-          <Text style={styles.clusterMetaText}>{cluster.photos.length} photos</Text>
-          <Text style={styles.clusterMetaDot}>·</Text>
-          <Text style={styles.clusterMetaText}>
-            {formatDateRange(cluster.startDate, cluster.endDate)}
-          </Text>
-          {cluster.days > 1 && (
-            <>
-              <Text style={styles.clusterMetaDot}>·</Text>
-              <Text style={styles.clusterMetaText}>{cluster.days} days</Text>
-            </>
-          )}
-        </View>
-      </View>
-    </TouchableOpacity>
+      </TouchableOpacity>
+
+      <ShareModal
+        visible={showShareModal}
+        onClose={() => setShowShareModal(false)}
+        locationName={locationName}
+        dateRange={dateRange}
+        photoCount={cluster.photos.length}
+      />
+    </>
   );
 }
 

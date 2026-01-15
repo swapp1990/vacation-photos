@@ -238,6 +238,14 @@ export default StyleSheet.create({
     color: colors.text.muted,
     marginHorizontal: spacing.sm,
   },
+  shareButton: {
+    padding: spacing.xs,
+    marginLeft: spacing.sm,
+  },
+  shareButtonText: {
+    fontSize: 18,
+    color: colors.primary,
+  },
   clusterHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',

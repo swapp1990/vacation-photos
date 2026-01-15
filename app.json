@@ -20,7 +20,9 @@
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "This app needs access to your photos to display and organize your vacation memories.",
         "NSLocationWhenInUseUsageDescription": "This app needs your location to identify photos taken away from home.",
-        "ITSAppUsesNonExemptEncryption": false
+        "NSContactsUsageDescription": "This app needs access to your contacts to share vacation photos with friends and family.",
+        "ITSAppUsesNonExemptEncryption": false,
+        "LSApplicationQueriesSchemes": ["whatsapp", "sms"]
       }
     },
     "android": {
