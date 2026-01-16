@@ -184,7 +184,7 @@ export default function SharedVacationViewer({ shareId, onClose }) {
           </View>
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={styles.loadingText}>Loading shared photos...</Text>
+            <Text style={styles.loadingText}>Loading shared vacation...</Text>
           </View>
         </SafeAreaView>
       </SafeAreaProvider>

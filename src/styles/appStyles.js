@@ -207,6 +207,27 @@ export default StyleSheet.create({
     fontWeight: '600',
     fontSize: 11,
   },
+  // Upload Status Badge
+  uploadStatusBadge: {
+    position: 'absolute',
+    top: spacing.sm,
+    right: spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    paddingVertical: 3,
+    paddingHorizontal: 6,
+    borderRadius: borderRadius.sm,
+  },
+  uploadStatusIcon: {
+    fontSize: 12,
+  },
+  uploadStatusCheck: {
+    fontSize: 10,
+    color: colors.success,
+    fontWeight: '700',
+    marginLeft: 1,
+  },
   // Card Info Section
   clusterInfo: {
     padding: spacing.lg,

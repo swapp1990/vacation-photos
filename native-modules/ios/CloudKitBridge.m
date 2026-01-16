@@ -7,6 +7,7 @@ RCT_EXTERN_METHOD(uploadSharedVacation:(NSString *)shareId
                   startDate:(double)startDate
                   endDate:(double)endDate
                   photoCount:(int)photoCount
+                  sharedBy:(NSString *)sharedBy
                   resolver:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject)
 
@@ -23,6 +24,10 @@ RCT_EXTERN_METHOD(fetchSharedVacation:(NSString *)shareId
                   rejecter:(RCTPromiseRejectBlock)reject)
 
 RCT_EXTERN_METHOD(fetchSharedPhotos:(NSString *)shareId
+                  resolver:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject)
+
+RCT_EXTERN_METHOD(fetchPreviewPhotos:(NSString *)shareId
                   resolver:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject)
 

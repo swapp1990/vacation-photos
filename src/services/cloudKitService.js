@@ -22,14 +22,15 @@ export async function checkCloudKitAvailability() {
 
 // Upload a shared vacation record
 export async function uploadSharedVacation(vacationData) {
-  const { shareId, locationName, startDate, endDate, photoCount } = vacationData;
+  const { shareId, locationName, startDate, endDate, photoCount, sharedBy } = vacationData;
 
   return await CloudKitManager.uploadSharedVacation(
     shareId,
     locationName,
     startDate.getTime(),
     endDate.getTime(),
-    photoCount
+    photoCount,
+    sharedBy || 'Someone'
   );
 }
 
@@ -54,12 +55,25 @@ export async function fetchSharedVacation(shareId) {
     startDate: new Date(result.startDate),
     endDate: new Date(result.endDate),
     photoCount: result.photoCount,
+    sharedBy: result.sharedBy || 'Someone',
   };
 }
 
 // Fetch all photos for a shared vacation
 export async function fetchSharedPhotos(shareId) {
   const photos = await CloudKitManager.fetchSharedPhotos(shareId);
+
+  return photos.map(photo => ({
+    orderIndex: photo.orderIndex,
+    width: photo.width,
+    height: photo.height,
+    localPath: photo.localPath,
+  }));
+}
+
+// Fetch preview photos (first 3) for notification banner
+export async function fetchPreviewPhotos(shareId) {
+  const photos = await CloudKitManager.fetchPreviewPhotos(shareId);
 
   return photos.map(photo => ({
     orderIndex: photo.orderIndex,
@@ -99,6 +113,7 @@ export default {
   uploadPhoto,
   fetchSharedVacation,
   fetchSharedPhotos,
+  fetchPreviewPhotos,
   generateShareLink,
   parseShareLink,
 };

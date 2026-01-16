@@ -43,7 +43,12 @@ import {
   formatDateRange,
 } from './src/components';
 import SharedVacationViewer from './src/components/SharedVacationViewer';
-import { parseShareLink } from './src/services/cloudKitService';
+import SharedVacationsCard from './src/components/SharedVacationsCard';
+import SharedVacationsList from './src/components/SharedVacationsList';
+import { parseShareLink, fetchSharedVacation, fetchPreviewPhotos } from './src/services/cloudKitService';
+import { getUploadedVacations, getClusterKey, MAX_PHOTOS } from './src/services/photoUploadService';
+
+const SHARED_VACATIONS_KEY = 'shared_vacations';
 import styles, { imageSize } from './src/styles/appStyles';
 import {
   loadCache,
@@ -549,6 +554,129 @@ export default function App() {
   const [selectedYear, setSelectedYear] = useState(null); // For viewing previous year's clusters
   const [sharedVacationId, setSharedVacationId] = useState(null); // For viewing shared vacation from deep link
 
+  // Shared vacations state (supports multiple)
+  const [sharedVacations, setSharedVacations] = useState([]); // Array of { shareId, vacation, previewPhotos, receivedAt }
+  const [showSharedVacationsList, setShowSharedVacationsList] = useState(false);
+  const [sharedVacationsDismissed, setSharedVacationsDismissed] = useState(false);
+  const [uploadedVacations, setUploadedVacations] = useState({}); // { clusterKey: { shareId, uploadedCount, totalPhotos } }
+
+  // Load uploaded vacations mapping
+  const loadUploadedVacations = async () => {
+    const uploaded = await getUploadedVacations();
+    setUploadedVacations(uploaded);
+  };
+
+  // Get upload status for a cluster
+  const getUploadStatus = (cluster) => {
+    const clusterKey = getClusterKey(cluster);
+    const entry = uploadedVacations[clusterKey];
+    if (!entry) return null;
+    // If total photos > MAX_PHOTOS, it's partial
+    if (entry.totalPhotos > MAX_PHOTOS) return 'partial';
+    return 'uploaded';
+  };
+
+  // Load saved shared vacations from storage
+  const loadSavedSharedVacations = async () => {
+    try {
+      const saved = await AsyncStorage.getItem(SHARED_VACATIONS_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        // Convert date strings back to Date objects
+        const vacations = parsed.map(sv => ({
+          ...sv,
+          receivedAt: sv.receivedAt ? new Date(sv.receivedAt) : null,
+          vacation: sv.vacation ? {
+            ...sv.vacation,
+            startDate: sv.vacation.startDate ? new Date(sv.vacation.startDate) : null,
+            endDate: sv.vacation.endDate ? new Date(sv.vacation.endDate) : null,
+          } : null,
+        }));
+        setSharedVacations(vacations);
+      }
+    } catch (error) {
+      console.log('Error loading saved shared vacations:', error);
+    }
+  };
+
+  // Save shared vacations to storage
+  const saveSharedVacations = async (vacations) => {
+    try {
+      await AsyncStorage.setItem(SHARED_VACATIONS_KEY, JSON.stringify(vacations));
+    } catch (error) {
+      console.log('Error saving shared vacations:', error);
+    }
+  };
+
+  // Add a new shared vacation from deep link
+  const addSharedVacation = async (shareId) => {
+    console.log('Adding shared vacation:', shareId);
+
+    // Check if already exists
+    if (sharedVacations.some(sv => sv.shareId === shareId)) {
+      console.log('Shared vacation already exists');
+      setSharedVacationsDismissed(false); // Show card again
+      return;
+    }
+
+    try {
+      // Fetch vacation metadata and preview photos in parallel
+      const [vacation, previewPhotos] = await Promise.all([
+        fetchSharedVacation(shareId),
+        fetchPreviewPhotos(shareId),
+      ]);
+
+      const newSharedVacation = {
+        shareId,
+        vacation,
+        previewPhotos,
+        receivedAt: new Date(),
+      };
+
+      const updatedVacations = [newSharedVacation, ...sharedVacations];
+      setSharedVacations(updatedVacations);
+      setSharedVacationsDismissed(false); // Show card
+      saveSharedVacations(updatedVacations);
+    } catch (error) {
+      console.log('Error adding shared vacation:', error);
+    }
+  };
+
+  // Handle card tap - open the list
+  const handleSharedVacationsCardPress = () => {
+    if (sharedVacations.length === 1) {
+      // If only one, go directly to viewer
+      setSharedVacationId(sharedVacations[0].shareId);
+    } else {
+      // If multiple, show list
+      setShowSharedVacationsList(true);
+    }
+  };
+
+  // Handle selecting a vacation from the list
+  const handleSelectSharedVacation = (shareId) => {
+    setShowSharedVacationsList(false);
+    setSharedVacationId(shareId);
+  };
+
+  // Handle dismissing the shared vacations card
+  const handleDismissSharedVacations = () => {
+    setSharedVacationsDismissed(true);
+  };
+
+  // Remove a shared vacation after viewing (optional - could keep for history)
+  const removeSharedVacation = (shareId) => {
+    const updatedVacations = sharedVacations.filter(sv => sv.shareId !== shareId);
+    setSharedVacations(updatedVacations);
+    saveSharedVacations(updatedVacations);
+  };
+
+  // Load saved shared vacations and uploaded vacations on startup
+  useEffect(() => {
+    loadSavedSharedVacations();
+    loadUploadedVacations();
+  }, []);
+
   // Handle deep links for shared vacations
   useEffect(() => {
     // Handle deep link when app is already open
@@ -556,7 +684,7 @@ export default function App() {
       const shareId = parseShareLink(event.url);
       if (shareId) {
         console.log('Deep link received:', shareId);
-        setSharedVacationId(shareId);
+        addSharedVacation(shareId);
       }
     };
 
@@ -569,13 +697,13 @@ export default function App() {
         const shareId = parseShareLink(url);
         if (shareId) {
           console.log('App opened via deep link:', shareId);
-          setSharedVacationId(shareId);
+          addSharedVacation(shareId);
         }
       }
     });
 
     return () => subscription.remove();
-  }, []);
+  }, [sharedVacations]);
 
   useEffect(() => {
     checkOnboarding();
@@ -734,6 +862,9 @@ export default function App() {
 
     const subscription = AppState.addEventListener('change', (nextAppState) => {
       if (nextAppState === 'active') {
+        // Refresh uploaded vacations status
+        loadUploadedVacations();
+
         const now = Date.now();
         if (now - lastRefreshRef.current > REFRESH_DEBOUNCE_MS) {
           if (!loading && !loadingMore && !refreshing) {
@@ -1210,6 +1341,8 @@ export default function App() {
         cluster={item}
         onViewAll={handleViewAll}
         photosWithFaces={photosWithFaces}
+        uploadStatus={getUploadStatus(item)}
+        onShareComplete={loadUploadedVacations}
       />
     );
   };
@@ -1315,6 +1448,17 @@ export default function App() {
           resizeMode="contain"
         />
       </Screen.Fullscreen>
+    );
+  }
+
+  // Shared vacations list - show all shared vacations
+  if (showSharedVacationsList) {
+    return (
+      <SharedVacationsList
+        sharedVacations={sharedVacations}
+        onSelectVacation={handleSelectSharedVacation}
+        onClose={() => setShowSharedVacationsList(false)}
+      />
     );
   }
 
@@ -1562,6 +1706,7 @@ export default function App() {
     <SafeAreaProvider>
       <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
         <StatusBar style="auto" />
+
         <View style={styles.header}>
           <Image
             source={require('./assets/app-logo-transparent.png')}
@@ -1583,6 +1728,16 @@ export default function App() {
             </TouchableOpacity>
           )}
         </View>
+
+        {/* Shared Vacations Card */}
+        {sharedVacations.length > 0 && !sharedVacationsDismissed && (
+          <SharedVacationsCard
+            sharedVacations={sharedVacations}
+            onPress={handleSharedVacationsCardPress}
+            onDismiss={handleDismissSharedVacations}
+          />
+        )}
+
         <FlatList
           key="clusters-list"
           data={getGroupedClusterItems()}

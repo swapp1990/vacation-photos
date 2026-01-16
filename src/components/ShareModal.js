@@ -17,7 +17,7 @@ import * as Contacts from 'expo-contacts';
 import * as MediaLibrary from 'expo-media-library';
 import { StyleSheet } from 'react-native';
 import { colors, spacing, typography, borderRadius } from '../styles/theme';
-import { shareVacationCluster, MAX_PHOTOS } from '../services/photoUploadService';
+import { shareVacationCluster, MAX_PHOTOS, getUserDisplayName, setUserDisplayName } from '../services/photoUploadService';
 import { checkCloudKitAvailability } from '../services/cloudKitService';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -27,13 +27,14 @@ const APP_STORE_LINK = 'https://apps.apple.com/app/id6756803475';
 
 // Screen states
 const SCREEN = {
+  NAME_INPUT: 'nameInput',
   CONTACTS: 'contacts',
   UPLOAD_CONFIRM: 'uploadConfirm',
   UPLOADING: 'uploading',
   SEND_CONFIRM: 'sendConfirm',
 };
 
-export default function ShareModal({ visible, onClose, cluster }) {
+export default function ShareModal({ visible, onClose, cluster, onShareComplete }) {
   const [screen, setScreen] = useState(SCREEN.CONTACTS);
   const [contacts, setContacts] = useState([]);
   const [filteredContacts, setFilteredContacts] = useState([]);
@@ -46,6 +47,10 @@ export default function ShareModal({ visible, onClose, cluster }) {
   const [uploadProgress, setUploadProgress] = useState({ phase: '', current: 0, total: 0 });
   const [shareResult, setShareResult] = useState(null);
   const [previewPhotoUris, setPreviewPhotoUris] = useState([]);
+
+  // User name state
+  const [userName, setUserName] = useState('');
+  const [userNameInput, setUserNameInput] = useState('');
 
   // Derived values
   const locationName = cluster?.locationName || 'Vacation Photos';
@@ -66,17 +71,43 @@ export default function ShareModal({ visible, onClose, cluster }) {
 
   useEffect(() => {
     if (visible) {
-      setScreen(SCREEN.CONTACTS);
       setSelectedContact(null);
       setShareResult(null);
       setUploadProgress({ phase: '', current: 0, total: 0 });
       setPreviewPhotoUris([]);
-      loadContacts();
+      checkUserName();
       loadPreviewPhotos();
     } else {
       setSearchQuery('');
     }
   }, [visible]);
+
+  // Check if user has set their name
+  const checkUserName = async () => {
+    const name = await getUserDisplayName();
+    if (name && name !== 'A friend') {
+      setUserName(name);
+      // Go to upload confirmation first (upload before selecting contact)
+      setScreen(SCREEN.UPLOAD_CONFIRM);
+    } else {
+      setUserNameInput('');
+      setScreen(SCREEN.NAME_INPUT);
+    }
+  };
+
+  // Handle name submission
+  const handleNameSubmit = async () => {
+    const trimmedName = userNameInput.trim();
+    if (!trimmedName) {
+      Alert.alert('Name Required', 'Please enter your name so your friend knows who shared the vacation.');
+      return;
+    }
+
+    await setUserDisplayName(trimmedName);
+    setUserName(trimmedName);
+    // Go to upload confirmation (upload before selecting contact)
+    setScreen(SCREEN.UPLOAD_CONFIRM);
+  };
 
   // Load photo URIs for preview
   const loadPreviewPhotos = async () => {
@@ -142,13 +173,15 @@ export default function ShareModal({ visible, onClose, cluster }) {
     setLoading(false);
   };
 
-  const handleContactSelect = async (contact) => {
+  const handleContactSelect = (contact) => {
     setSelectedContact(contact);
+    // Upload already done, go directly to send confirmation
+    setScreen(SCREEN.SEND_CONFIRM);
+  };
 
-    // Check CloudKit availability
+  const handleStartUpload = async () => {
+    // Check CloudKit availability first
     const availability = await checkCloudKitAvailability();
-    console.log('CloudKit availability:', availability);
-
     if (!availability.available) {
       if (availability.status === 'noAccount') {
         Alert.alert(
@@ -161,37 +194,30 @@ export default function ShareModal({ visible, onClose, cluster }) {
         );
         return;
       }
-      if (availability.status === 'moduleNotLoaded') {
-        Alert.alert(
-          'Feature Not Available',
-          'Photo sharing requires a development build. The CloudKit module is not loaded.',
-          [{ text: 'OK' }]
-        );
-        return;
-      }
-      // Show detailed error for debugging
-      Alert.alert(
-        'CloudKit Error',
-        `Status: ${availability.status}\n${availability.error || 'Please try again later.'}`,
-        [{ text: 'OK' }]
-      );
+      Alert.alert('CloudKit Error', availability.error || 'Please try again later.');
       return;
     }
 
-    setScreen(SCREEN.UPLOAD_CONFIRM);
-  };
-
-  const handleStartUpload = async () => {
-    setScreen(SCREEN.UPLOADING);
-
     try {
+      // Show uploading screen on first progress callback
+      let uploadingScreenShown = false;
+
       const result = await shareVacationCluster(cluster, (phase, current, total) => {
+        // Only show uploading screen once we start actual upload
+        if (!uploadingScreenShown) {
+          setScreen(SCREEN.UPLOADING);
+          uploadingScreenShown = true;
+        }
         setUploadProgress({ phase, current, total });
       });
 
       if (result.success) {
         setShareResult(result);
-        setScreen(SCREEN.SEND_CONFIRM);
+        // Notify parent that share completed (for updating upload status indicators)
+        onShareComplete?.();
+        // Go to contacts screen to select who to send to
+        setScreen(SCREEN.CONTACTS);
+        loadContacts();
       } else {
         Alert.alert('Upload Failed', result.error || 'Failed to upload photos. Please try again.');
         setScreen(SCREEN.UPLOAD_CONFIRM);
@@ -211,7 +237,7 @@ export default function ShareModal({ visible, onClose, cluster }) {
 
     const phoneNumber = selectedContact.phoneNumbers[0].number.replace(/[\s\-\(\)]/g, '');
 
-    const shareMessage = `Check out my vacation photos from ${locationName}! 📸\n\n${dateRange} · ${shareResult.photosUploaded} photos\n\nView photos in the app:\n${shareResult.shareLink}\n\nDon't have the app? Download it here:\n${APP_STORE_LINK}`;
+    const shareMessage = `I'm sharing my ${locationName} vacation with you! 🌴\n\n${dateRange} · ${shareResult.photosUploaded} photos\n\nView in the app:\n${shareResult.shareLink}\n\nDon't have the app? Download it here:\n${APP_STORE_LINK}`;
 
     const whatsappUrl = `whatsapp://send?phone=${phoneNumber}&text=${encodeURIComponent(shareMessage)}`;
 
@@ -261,16 +287,16 @@ export default function ShareModal({ visible, onClose, cluster }) {
     </TouchableOpacity>
   );
 
-  // Upload Confirmation Screen
-  if (screen === SCREEN.UPLOAD_CONFIRM && selectedContact) {
+  // Upload Confirmation Screen (shown first, before selecting contact)
+  if (screen === SCREEN.UPLOAD_CONFIRM) {
     return (
       <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
         <View style={styles.container}>
           <View style={styles.header}>
-            <TouchableOpacity onPress={() => setScreen(SCREEN.CONTACTS)}>
-              <Text style={styles.backButton}>← Back</Text>
+            <TouchableOpacity onPress={onClose}>
+              <Text style={styles.cancelButton}>Cancel</Text>
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>Share Photos</Text>
+            <Text style={styles.headerTitle}>Share Vacation</Text>
             <View style={{ width: 60 }} />
           </View>
 
@@ -310,27 +336,12 @@ export default function ShareModal({ visible, onClose, cluster }) {
               )}
             </View>
 
-            <Text style={styles.confirmationLabel}>Sharing with:</Text>
-            <View style={styles.recipientCard}>
-              <View style={styles.contactAvatar}>
-                <Text style={styles.contactAvatarText}>
-                  {selectedContact.name?.charAt(0)?.toUpperCase() || '?'}
-                </Text>
-              </View>
-              <View style={styles.contactInfo}>
-                <Text style={styles.contactName}>{selectedContact.name}</Text>
-                <Text style={styles.contactPhone}>
-                  {selectedContact.phoneNumbers?.[0]?.number}
-                </Text>
-              </View>
-            </View>
-
             <TouchableOpacity style={styles.uploadButton} onPress={handleStartUpload}>
-              <Text style={styles.uploadButtonText}>Upload & Share</Text>
+              <Text style={styles.uploadButtonText}>Upload to iCloud</Text>
             </TouchableOpacity>
 
             <Text style={styles.uploadNote}>
-              Photos will be uploaded to iCloud and a link will be sent via WhatsApp
+              After uploading, you'll select who to share with
             </Text>
           </ScrollView>
         </View>
@@ -417,17 +428,69 @@ export default function ShareModal({ visible, onClose, cluster }) {
     );
   }
 
-  // Contacts List Screen (default)
+  // Name Input Screen
+  if (screen === SCREEN.NAME_INPUT) {
+    return (
+      <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
+        <View style={styles.container}>
+          <View style={styles.header}>
+            <TouchableOpacity onPress={onClose}>
+              <Text style={styles.cancelButton}>Cancel</Text>
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Share Trip</Text>
+            <View style={{ width: 60 }} />
+          </View>
+
+          <View style={styles.nameInputContainer}>
+            <Text style={styles.nameInputEmoji}>👋</Text>
+            <Text style={styles.nameInputTitle}>What's your name?</Text>
+            <Text style={styles.nameInputSubtitle}>
+              Your friend will see who shared the vacation
+            </Text>
+            <TextInput
+              style={styles.nameInput}
+              placeholder="Enter your name"
+              placeholderTextColor={colors.text.muted}
+              value={userNameInput}
+              onChangeText={setUserNameInput}
+              autoFocus
+              autoCapitalize="words"
+              returnKeyType="done"
+              onSubmitEditing={handleNameSubmit}
+            />
+            <TouchableOpacity
+              style={[styles.continueButton, !userNameInput.trim() && styles.continueButtonDisabled]}
+              onPress={handleNameSubmit}
+              disabled={!userNameInput.trim()}
+            >
+              <Text style={styles.continueButtonText}>Continue</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    );
+  }
+
+  // Contacts List Screen (shown after upload completes)
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
       <View style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity onPress={onClose}>
-            <Text style={styles.cancelButton}>Cancel</Text>
+            <Text style={styles.cancelButton}>Done</Text>
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Share Trip</Text>
+          <Text style={styles.headerTitle}>Select Contact</Text>
           <View style={{ width: 60 }} />
         </View>
+
+        {/* Success indicator after upload */}
+        {shareResult && (
+          <View style={styles.uploadSuccessBanner}>
+            <Text style={styles.uploadSuccessText}>
+              ✓ {shareResult.photosUploaded} photos uploaded
+            </Text>
+          </View>
+        )}
 
         {permissionDenied ? (
           <View style={styles.permissionDenied}>
@@ -698,17 +761,16 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
   uploadButton: {
+    width: '100%',
     backgroundColor: colors.primary,
     paddingVertical: spacing.lg,
-    borderRadius: borderRadius.lg,
+    borderRadius: borderRadius.round,
     alignItems: 'center',
-    marginTop: spacing.xl,
   },
   uploadButtonText: {
-    ...typography.body,
+    ...typography.button,
     color: '#fff',
-    fontWeight: '600',
-    fontSize: 16,
+    fontSize: 17,
   },
   uploadNote: {
     ...typography.caption,
@@ -783,5 +845,66 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '600',
     fontSize: 16,
+  },
+  // Name input screen
+  nameInputContainer: {
+    flex: 1,
+    padding: spacing.xl,
+    paddingTop: 60,
+    alignItems: 'center',
+  },
+  nameInputEmoji: {
+    fontSize: 48,
+    marginBottom: spacing.md,
+  },
+  nameInputTitle: {
+    ...typography.title,
+    color: colors.text.primary,
+    textAlign: 'center',
+    marginBottom: spacing.sm,
+  },
+  nameInputSubtitle: {
+    ...typography.body,
+    color: colors.text.muted,
+    textAlign: 'center',
+    marginBottom: spacing.xl,
+  },
+  nameInput: {
+    width: '100%',
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.lg,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    ...typography.body,
+    color: colors.text.primary,
+    textAlign: 'center',
+    fontSize: 18,
+    marginBottom: spacing.lg,
+  },
+  continueButton: {
+    width: '100%',
+    backgroundColor: colors.primary,
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.lg,
+    alignItems: 'center',
+  },
+  continueButtonDisabled: {
+    opacity: 0.5,
+  },
+  continueButtonText: {
+    ...typography.button,
+    color: '#fff',
+  },
+  // Upload success banner
+  uploadSuccessBanner: {
+    backgroundColor: colors.success,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    alignItems: 'center',
+  },
+  uploadSuccessText: {
+    ...typography.subhead,
+    color: '#fff',
+    fontWeight: '600',
   },
 });

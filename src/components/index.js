@@ -5,6 +5,8 @@ export { default as LocationSelectionScreen } from './LocationSelectionScreen';
 export { default as YearDetailView } from './YearDetailView';
 export { default as ShareModal } from './ShareModal';
 export { default as SharedVacationViewer } from './SharedVacationViewer';
+export { default as SharedVacationsCard } from './SharedVacationsCard';
+export { default as SharedVacationsList } from './SharedVacationsList';
 export {
   ClusterCard,
   YearCard,

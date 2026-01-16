@@ -131,7 +131,8 @@ function PhotoCollage({ photos, remaining, avgDistanceMiles }) {
 }
 
 // Main cluster card component
-export function ClusterCard({ cluster, onViewAll, photosWithFaces = {} }) {
+// uploadStatus: 'uploaded' | 'partial' | null
+export function ClusterCard({ cluster, onViewAll, photosWithFaces = {}, uploadStatus = null, onShareComplete }) {
   const [showShareModal, setShowShareModal] = useState(false);
   // Get the best photos for the collage, prioritizing ones with faces for the cover
   const getCollagePhotos = () => {
@@ -176,7 +177,20 @@ export function ClusterCard({ cluster, onViewAll, photosWithFaces = {} }) {
   return (
     <>
       <TouchableOpacity style={styles.clusterCard} onPress={() => onViewAll(cluster)} activeOpacity={0.9}>
-        <PhotoCollage photos={photos} remaining={remaining} avgDistanceMiles={avgDistanceMiles} />
+        <View>
+          <PhotoCollage photos={photos} remaining={remaining} avgDistanceMiles={avgDistanceMiles} />
+          {/* Upload status indicator */}
+          {uploadStatus && (
+            <View style={styles.uploadStatusBadge}>
+              <Text style={styles.uploadStatusIcon}>
+                {uploadStatus === 'uploaded' ? '☁️' : '☁️'}
+              </Text>
+              <Text style={styles.uploadStatusCheck}>
+                {uploadStatus === 'uploaded' ? '✓' : '⋯'}
+              </Text>
+            </View>
+          )}
+        </View>
 
         {/* Info Section */}
         <View style={styles.clusterInfo}>
@@ -208,6 +222,7 @@ export function ClusterCard({ cluster, onViewAll, photosWithFaces = {} }) {
         visible={showShareModal}
         onClose={() => setShowShareModal(false)}
         cluster={cluster}
+        onShareComplete={onShareComplete}
       />
     </>
   );

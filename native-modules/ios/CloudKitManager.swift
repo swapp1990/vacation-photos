@@ -18,6 +18,7 @@ class CloudKitManager: NSObject {
     startDate: Double,
     endDate: Double,
     photoCount: Int,
+    sharedBy: String,
     resolver resolve: @escaping RCTPromiseResolveBlock,
     rejecter reject: @escaping RCTPromiseRejectBlock
   ) {
@@ -27,6 +28,7 @@ class CloudKitManager: NSObject {
     record["startDate"] = Date(timeIntervalSince1970: startDate / 1000)
     record["endDate"] = Date(timeIntervalSince1970: endDate / 1000)
     record["photoCount"] = photoCount
+    record["sharedBy"] = sharedBy
 
     publicDatabase.save(record) { savedRecord, error in
       DispatchQueue.main.async {
@@ -121,6 +123,9 @@ class CloudKitManager: NSObject {
         if let photoCount = record["photoCount"] as? Int {
           result["photoCount"] = photoCount
         }
+        if let sharedBy = record["sharedBy"] as? String {
+          result["sharedBy"] = sharedBy
+        }
 
         resolve(result)
       }
@@ -168,6 +173,52 @@ class CloudKitManager: NSObject {
 
         case .failure(let error):
           reject("FETCH_ERROR", "Failed to fetch photos: \(error.localizedDescription)", error)
+        }
+      }
+    }
+  }
+
+  // MARK: - Fetch Preview Photos (limited to 3)
+
+  @objc func fetchPreviewPhotos(
+    _ shareId: String,
+    resolver resolve: @escaping RCTPromiseResolveBlock,
+    rejecter reject: @escaping RCTPromiseRejectBlock
+  ) {
+    let predicate = NSPredicate(format: "shareId == %@", shareId)
+    let query = CKQuery(recordType: "SharedPhoto", predicate: predicate)
+    query.sortDescriptors = [NSSortDescriptor(key: "orderIndex", ascending: true)]
+
+    publicDatabase.fetch(withQuery: query, inZoneWith: nil, desiredKeys: ["orderIndex", "width", "height", "photoAsset"], resultsLimit: 3) { result in
+      DispatchQueue.main.async {
+        switch result {
+        case .success(let (matchResults, _)):
+          var photos: [[String: Any]] = []
+
+          for (_, recordResult) in matchResults {
+            switch recordResult {
+            case .success(let record):
+              var photoInfo: [String: Any] = [
+                "orderIndex": record["orderIndex"] as? Int ?? 0,
+                "width": record["width"] as? Int ?? 0,
+                "height": record["height"] as? Int ?? 0
+              ]
+
+              if let asset = record["photoAsset"] as? CKAsset,
+                 let fileURL = asset.fileURL {
+                photoInfo["localPath"] = fileURL.path
+              }
+
+              photos.append(photoInfo)
+            case .failure(let error):
+              print("Error fetching preview photo: \(error)")
+            }
+          }
+
+          resolve(photos)
+
+        case .failure(let error):
+          reject("FETCH_ERROR", "Failed to fetch preview photos: \(error.localizedDescription)", error)
         }
       }
     }
