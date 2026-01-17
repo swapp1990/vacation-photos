@@ -1,5 +1,13 @@
 # Claude Agent Instructions
 
+## Build & Development Workflow
+
+### IMPORTANT: This project uses Expo Go + EAS Build
+- **Development**: Use Expo Go app (no local Xcode builds needed)
+- **Production builds**: Use `eas build --platform ios` (cloud builds)
+- **DO NOT** run `pod install` locally - not needed
+- **DO NOT** suggest Xcode upgrades for building - use EAS Build instead
+
 ## iOS Development Best Practices
 
 ### Safe Area Handling (CRITICAL)

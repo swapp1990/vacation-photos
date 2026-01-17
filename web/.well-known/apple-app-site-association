@@ -3,14 +3,14 @@
     "apps": [],
     "details": [
       {
-        "appID": "TEAM_ID.com.swapp1990.vacationphotos",
+        "appID": "RA5M8S58U3.com.swapp1990.vacationphotos",
         "paths": ["/share/*"]
       }
     ]
   },
   "appclips": {
     "apps": [
-      "TEAM_ID.com.swapp1990.vacationphotos.Clip"
+      "RA5M8S58U3.com.swapp1990.vacationphotos.Clip"
     ]
   }
 }
