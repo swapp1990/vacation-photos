@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		121D68FC3AB7D7059384F03E /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = AF330C3B5DADC1B9028C9216 /* main.m */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
+		B0E7DBC72F1B913200472159 /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B0E7DBC82F1B913200472159 /* Images.xcassets */; };
 		20B397D03E7446D6801B995D /* AppGroupStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 044FB459540F4054A699C131 /* AppGroupStorage.swift */; };
 		34CD2B866475A80474160699 /* VacationPhotosClip.app in Embed App Clips */ = {isa = PBXBuildFile; fileRef = B0E7DB972F1B913000472158 /* VacationPhotosClip.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
@@ -81,6 +82,7 @@
 		AF330C3B5DADC1B9028C9216 /* main.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
 		B0E7DB972F1B913000472158 /* VacationPhotosClip.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VacationPhotosClip.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		B0E7DBA02F1B913100472158 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
+		B0E7DBC82F1B913200472159 /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Images.xcassets; sourceTree = "<group>"; };
 		B0E7DBA82F1B913100472158 /* VacationPhotosClipTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = VacationPhotosClipTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		B0E7DBAC2F1B913100472158 /* VacationPhotosClipTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VacationPhotosClipTests.swift; sourceTree = "<group>"; };
 		B0E7DBB22F1B913100472158 /* VacationPhotosClipUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = VacationPhotosClipUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -208,6 +210,7 @@
 				AF330C3B5DADC1B9028C9216 /* main.m */,
 				044EF959E12C3D43B9112E0A /* Info.plist */,
 				550D3C66F68D6FE457E629BF /* VacationPhotosClip.entitlements */,
+				B0E7DBC82F1B913200472159 /* Images.xcassets */,
 			);
 			path = VacationPhotosClip;
 			sourceTree = "<group>";
@@ -267,6 +270,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = B0E7DBC42F1B913200472158 /* Build configuration list for PBXNativeTarget "VacationPhotosClip" */;
 			buildPhases = (
+				B0E7DBC92F1B913200472160 /* Sync Version from Main App */,
 				B0E7DB932F1B913000472158 /* Sources */,
 				B0E7DB942F1B913000472158 /* Frameworks */,
 				B0E7DB952F1B913000472158 /* Resources */,
@@ -377,7 +381,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				B0E7DBA12F1B913100472158 /* Preview Assets.xcassets in Resources */,
+				B0E7DBC72F1B913200472159 /* Images.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -458,6 +462,21 @@
 			shellPath = /bin/sh;
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-VacationPhotos/Pods-VacationPhotos-resources.sh\"\n";
 			showEnvVarsInLog = 0;
+		};
+		B0E7DBC92F1B913200472160 /* Sync Version from Main App */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/VacationPhotos/Info.plist",
+			);
+			name = "Sync Version from Main App";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# Sync App Clip version with main app\nMAIN_PLIST=\"${SRCROOT}/VacationPhotos/Info.plist\"\nCLIP_PLIST=\"${SRCROOT}/VacationPhotosClip/Info.plist\"\n\nif [ -f \"$MAIN_PLIST\" ] && [ -f \"$CLIP_PLIST\" ]; then\n  MAIN_VERSION=$(/usr/libexec/PlistBuddy -c \"Print CFBundleVersion\" \"$MAIN_PLIST\")\n  MAIN_SHORT_VERSION=$(/usr/libexec/PlistBuddy -c \"Print CFBundleShortVersionString\" \"$MAIN_PLIST\")\n  \n  echo \"Syncing App Clip version to: $MAIN_VERSION ($MAIN_SHORT_VERSION)\"\n  \n  /usr/libexec/PlistBuddy -c \"Set :CFBundleVersion $MAIN_VERSION\" \"$CLIP_PLIST\"\n  /usr/libexec/PlistBuddy -c \"Set :CFBundleShortVersionString $MAIN_SHORT_VERSION\" \"$CLIP_PLIST\"\nfi\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -732,7 +751,7 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -794,7 +813,7 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
