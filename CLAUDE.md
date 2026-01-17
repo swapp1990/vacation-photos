@@ -48,3 +48,7 @@ src/
 - Use hardcoded spacing - use `spacing` from theme
 - Create inline StyleSheet in component files - create separate style files
 - Use `position: absolute` with `top: 20` near screen edges - use SafeAreaView
+
+## Journal
+
+Write entries in `docs/journals/YYYY-MM-DD.md` as a developer journal, not technical documentation. Keep it chronological - what you tried, what failed, what worked. Use short bullet points. Capture the journey including dead ends, not just final solutions. Keep entries concise for quick readability.
