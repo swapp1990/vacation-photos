@@ -93,3 +93,41 @@ export const geocodeClustersInParallel = async (clusters) => {
     }
   }));
 };
+
+/**
+ * Group photos by day for section list display
+ * @param {Array} photos - Array of photo objects with creationTime
+ * @returns {Array} Array of section objects with title, subtitle, and data
+ */
+export const groupPhotosByDay = (photos) => {
+  const groups = {};
+
+  photos.forEach(photo => {
+    const date = new Date(photo.creationTime);
+    const dateKey = date.toDateString();
+
+    if (!groups[dateKey]) {
+      groups[dateKey] = {
+        date,
+        photos: [],
+      };
+    }
+    groups[dateKey].photos.push(photo);
+  });
+
+  // Convert to array and sort by date
+  const sections = Object.values(groups)
+    .sort((a, b) => a.date - b.date)
+    .map((group, index) => {
+      const dayOptions = { weekday: 'long', month: 'short', day: 'numeric' };
+      const dayStr = group.date.toLocaleDateString('en-US', dayOptions);
+
+      return {
+        title: `Day ${index + 1}`,
+        subtitle: dayStr,
+        data: group.photos,
+      };
+    });
+
+  return sections;
+};

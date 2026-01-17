@@ -1,5 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
-import { useState, useEffect, useCallback, memo, useRef } from 'react';
+import { useState, useEffect, useCallback, memo } from 'react';
 import {
   Text,
   View,
@@ -12,25 +12,11 @@ import {
   RefreshControl,
   Linking,
   Platform,
-  AppState,
   Modal,
   TextInput,
-  KeyboardAvoidingView,
 } from 'react-native';
-import { Image as ExpoImage } from 'expo-image';
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
 import * as MediaLibrary from 'expo-media-library';
-import * as Location from 'expo-location';
-// FaceDetector requires development build - not available in Expo Go
-// We'll check at runtime if it actually works
-let FaceDetector = null;
-let faceDetectorAvailable = true; // Will be set to false if native module isn't available
-try {
-  FaceDetector = require('expo-face-detector');
-} catch (e) {
-  faceDetectorAvailable = false;
-}
-
 import { Ionicons } from '@expo/vector-icons';
 
 // Import reusable components and styles
@@ -49,494 +35,36 @@ import {
 import SharedVacationViewer from './src/components/SharedVacationViewer';
 import SharedVacationsCard from './src/components/SharedVacationsCard';
 import SharedVacationsList from './src/components/SharedVacationsList';
-import { parseShareLink, fetchSharedVacation, fetchPreviewPhotos } from './src/services/cloudKitService';
-import { getUploadedVacations, getClusterKey, MAX_PHOTOS } from './src/services/photoUploadService';
 
-const SHARED_VACATIONS_KEY = 'shared_vacations';
-const EDITED_LOCATIONS_KEY = 'edited_cluster_locations';
 import styles, { imageSize } from './src/styles/appStyles';
 import { colors } from './src/styles/theme';
 import {
-  loadCache,
   saveCache,
-  clearCache,
   extractPhotoMetadata,
   extractClusterMetadata,
-  rebuildClusters,
 } from './src/utils/photoCache';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   uriCache,
-  processAsset,
-  processPhotosInBatches,
   geocodeClustersInParallel,
+  groupPhotosByDay,
 } from './src/utils/photoProcessing';
-
-const ONBOARDING_KEY = 'onboarding_complete';
+import {
+  clusterPhotos,
+  getDistanceKm,
+  MILES_FROM_HOME,
+} from './src/utils/clusteringUtils';
+import { getLocationVibe } from './src/utils/vibeUtils';
+import {
+  usePhotoLoading,
+  useEditedLocations,
+  useSharedVacations,
+  useFaceDetection,
+} from './src/hooks';
 
 // Debug mode - set to false for production
 const DEBUG_MODE = __DEV__;
 
 const { width } = Dimensions.get('window');
-
-const MILES_FROM_HOME = 50;
-const KM_FROM_HOME = MILES_FROM_HOME * 1.60934;
-
-function getDistanceKm(lat1, lon1, lat2, lon2) {
-  const R = 6371;
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLon = ((lon2 - lon1) * Math.PI) / 180;
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
-}
-
-// Infer location for photos without location based on surrounding photos in time
-function inferMissingLocations(photos) {
-  if (photos.length === 0) return photos;
-
-  // Sort by creation time
-  const sorted = [...photos].sort((a, b) => a.creationTime - b.creationTime);
-
-  // Time window for location inference (4 hours in milliseconds)
-  const TIME_WINDOW_MS = 4 * 60 * 60 * 1000;
-
-  let inferredCount = 0;
-
-  for (let i = 0; i < sorted.length; i++) {
-    const photo = sorted[i];
-
-    // Skip if photo already has location
-    if (photo.location) continue;
-
-    const photoTime = photo.creationTime;
-
-    // Look for nearest photo with location before and after
-    let prevWithLocation = null;
-    let nextWithLocation = null;
-
-    // Search backwards for photo with location
-    for (let j = i - 1; j >= 0; j--) {
-      if (sorted[j].location) {
-        prevWithLocation = sorted[j];
-        break;
-      }
-    }
-
-    // Search forwards for photo with location
-    for (let j = i + 1; j < sorted.length; j++) {
-      if (sorted[j].location) {
-        nextWithLocation = sorted[j];
-        break;
-      }
-    }
-
-    // Determine which nearby photo's location to use
-    let locationSource = null;
-
-    if (prevWithLocation && nextWithLocation) {
-      // Both exist - check if they're in the same location (within 30 miles)
-      const prevTime = prevWithLocation.creationTime;
-      const nextTime = nextWithLocation.creationTime;
-      const prevTimeDiff = photoTime - prevTime;
-      const nextTimeDiff = nextTime - photoTime;
-
-      // Check if both are within time window
-      const prevInWindow = prevTimeDiff <= TIME_WINDOW_MS;
-      const nextInWindow = nextTimeDiff <= TIME_WINDOW_MS;
-
-      if (prevInWindow && nextInWindow) {
-        // Check if prev and next are in the same general location
-        const distance = getDistanceKm(
-          prevWithLocation.location.latitude,
-          prevWithLocation.location.longitude,
-          nextWithLocation.location.latitude,
-          nextWithLocation.location.longitude
-        );
-
-        if (distance <= 48) { // ~30 miles - same location
-          // Use the closer one in time
-          locationSource = prevTimeDiff <= nextTimeDiff ? prevWithLocation : nextWithLocation;
-        }
-        // If different locations, don't infer (could be in transit)
-      } else if (prevInWindow) {
-        locationSource = prevWithLocation;
-      } else if (nextInWindow) {
-        locationSource = nextWithLocation;
-      }
-    } else if (prevWithLocation) {
-      const timeDiff = photoTime - prevWithLocation.creationTime;
-      if (timeDiff <= TIME_WINDOW_MS) {
-        locationSource = prevWithLocation;
-      }
-    } else if (nextWithLocation) {
-      const timeDiff = nextWithLocation.creationTime - photoTime;
-      if (timeDiff <= TIME_WINDOW_MS) {
-        locationSource = nextWithLocation;
-      }
-    }
-
-    // Assign inferred location
-    if (locationSource) {
-      photo.location = locationSource.location;
-      photo.distanceFromHome = locationSource.distanceFromHome;
-      photo.locationInferred = true; // Mark as inferred
-      inferredCount++;
-    }
-  }
-
-  if (inferredCount > 0) {
-    console.log(`Inferred location for ${inferredCount} photos`);
-  }
-
-  return sorted;
-}
-
-// Find the most common location from a list of day locations
-// Groups nearby locations and returns the centroid of the largest group
-function getMostCommonLocation(dayLocations, thresholdKm) {
-  if (dayLocations.length === 0) return null;
-  if (dayLocations.length === 1) return dayLocations[0];
-
-  // Group locations that are within threshold of each other
-  const groups = [];
-
-  for (const loc of dayLocations) {
-    let addedToGroup = false;
-
-    for (const group of groups) {
-      // Check if this location is near the group's centroid
-      const groupCentroid = {
-        latitude: group.locations.reduce((sum, l) => sum + l.latitude, 0) / group.locations.length,
-        longitude: group.locations.reduce((sum, l) => sum + l.longitude, 0) / group.locations.length,
-      };
-
-      const distance = getDistanceKm(
-        loc.latitude,
-        loc.longitude,
-        groupCentroid.latitude,
-        groupCentroid.longitude
-      );
-
-      if (distance <= thresholdKm) {
-        group.locations.push(loc);
-        addedToGroup = true;
-        break;
-      }
-    }
-
-    if (!addedToGroup) {
-      groups.push({ locations: [loc] });
-    }
-  }
-
-  // Find the group with the most days (locations)
-  const largestGroup = groups.reduce((max, group) =>
-    group.locations.length > max.locations.length ? group : max
-  );
-
-  // Return the centroid of the largest group
-  return {
-    latitude: largestGroup.locations.reduce((sum, l) => sum + l.latitude, 0) / largestGroup.locations.length,
-    longitude: largestGroup.locations.reduce((sum, l) => sum + l.longitude, 0) / largestGroup.locations.length,
-  };
-}
-
-function clusterPhotos(photosWithMeta) {
-  if (photosWithMeta.length === 0) return [];
-
-  // First, infer missing locations based on surrounding photos
-  const photosWithInferred = inferMissingLocations(photosWithMeta);
-
-  // Step 1: Group photos by day and calculate each day's location
-  const dayGroups = {};
-  let unknownLocationPhotos = [];
-
-  for (const photo of photosWithInferred) {
-    if (!photo.location) {
-      unknownLocationPhotos.push(photo);
-      continue;
-    }
-
-    const dateKey = new Date(photo.creationTime).toDateString();
-    if (!dayGroups[dateKey]) {
-      dayGroups[dateKey] = [];
-    }
-    dayGroups[dateKey].push(photo);
-  }
-
-  // Step 2: Create day-clusters with each day's centroid location
-  const dayClusters = [];
-  for (const dateKey in dayGroups) {
-    const photos = dayGroups[dateKey];
-    const date = new Date(dateKey);
-
-    // Calculate centroid for this day's photos
-    const avgLat = photos.reduce((sum, p) => sum + Number(p.location.latitude), 0) / photos.length;
-    const avgLon = photos.reduce((sum, p) => sum + Number(p.location.longitude), 0) / photos.length;
-
-    dayClusters.push({
-      id: `day-${dayClusters.length}`,
-      photos: photos,
-      startDate: date,
-      endDate: date,
-      location: { latitude: avgLat, longitude: avgLon },
-      locationName: null,
-    });
-  }
-
-  // Sort day-clusters by date
-  dayClusters.sort((a, b) => a.startDate - b.startDate);
-
-  // Step 3: Merge adjacent day-clusters that are within 50km
-  const CLUSTER_THRESHOLD_KM = 50;
-  const clusters = [];
-
-  for (const dayCluster of dayClusters) {
-    let merged = false;
-
-    // Try to merge with an existing cluster
-    for (const cluster of clusters) {
-      const distance = getDistanceKm(
-        dayCluster.location.latitude,
-        dayCluster.location.longitude,
-        cluster.location.latitude,
-        cluster.location.longitude
-      );
-
-      // Check if within distance AND dates are adjacent (within 1 day)
-      const dayGap = Math.abs(dayCluster.startDate - cluster.endDate) / (1000 * 60 * 60 * 24);
-
-      if (distance <= CLUSTER_THRESHOLD_KM && dayGap <= 1) {
-        // Merge into existing cluster
-        cluster.photos = [...cluster.photos, ...dayCluster.photos];
-        if (dayCluster.endDate > cluster.endDate) {
-          cluster.endDate = dayCluster.endDate;
-        }
-        // Track this day's location for later - we'll pick the most common one
-        cluster.dayLocations.push(dayCluster.location);
-        merged = true;
-        break;
-      }
-    }
-
-    if (!merged) {
-      clusters.push({
-        id: `cluster-${clusters.length}`,
-        photos: [...dayCluster.photos],
-        startDate: dayCluster.startDate,
-        endDate: dayCluster.endDate,
-        location: dayCluster.location,
-        dayLocations: [dayCluster.location], // Track all day locations
-        locationName: null,
-      });
-    }
-  }
-
-  // Step 4: For each cluster, pick the location where user stayed most days
-  for (const cluster of clusters) {
-    if (cluster.dayLocations && cluster.dayLocations.length > 1) {
-      cluster.location = getMostCommonLocation(cluster.dayLocations, CLUSTER_THRESHOLD_KM);
-    }
-    delete cluster.dayLocations; // Clean up temporary field
-  }
-
-  // Add unknown location cluster if it exists
-  if (unknownLocationPhotos.length > 0) {
-    const dates = unknownLocationPhotos.map(p => new Date(p.creationTime));
-    clusters.push({
-      id: 'cluster-unknown',
-      photos: unknownLocationPhotos,
-      startDate: new Date(Math.min(...dates)),
-      endDate: new Date(Math.max(...dates)),
-      location: null,
-      locationName: 'Unknown Location',
-    });
-  }
-
-  // Finalize clusters
-  for (const cluster of clusters) {
-    cluster.photos.sort((a, b) => new Date(a.creationTime) - new Date(b.creationTime));
-    const days = Math.ceil((cluster.endDate - cluster.startDate) / (1000 * 60 * 60 * 24)) + 1;
-    cluster.isVacation = cluster.photos.length >= 3;
-    cluster.days = days;
-  }
-
-  // Merge clusters that are at the same location AND have overlapping dates
-  const mergedClusters = mergeClusters(clusters);
-
-  // Sort clusters by most recent first, but keep unknown location cluster last
-  mergedClusters.sort((a, b) => {
-    // Unknown location cluster always goes last
-    if (a.id === 'cluster-unknown') return 1;
-    if (b.id === 'cluster-unknown') return -1;
-    return b.endDate - a.endDate;
-  });
-
-  return mergedClusters;
-}
-
-// Check if two date ranges overlap or are adjacent (within 1 day)
-function datesOverlapOrAdjacent(start1, end1, start2, end2) {
-  const ONE_DAY_MS = 24 * 60 * 60 * 1000;
-  // Extend ranges by 1 day to catch adjacent trips
-  const extendedStart1 = new Date(start1.getTime() - ONE_DAY_MS);
-  const extendedEnd1 = new Date(end1.getTime() + ONE_DAY_MS);
-  // Check if ranges overlap
-  return extendedStart1 <= end2 && extendedEnd1 >= start2;
-}
-
-// Merge clusters that are at the same location AND have overlapping dates
-function mergeClusters(clusters) {
-  const MERGE_THRESHOLD_KM = 50; // ~31 miles - slightly higher than clustering to catch edge cases
-  let merged = true;
-
-  while (merged) {
-    merged = false;
-    for (let i = 0; i < clusters.length; i++) {
-      if (!clusters[i].location) continue; // Skip unknown location cluster
-
-      for (let j = i + 1; j < clusters.length; j++) {
-        if (!clusters[j].location) continue;
-
-        // Check location proximity
-        const distance = getDistanceKm(
-          clusters[i].location.latitude,
-          clusters[i].location.longitude,
-          clusters[j].location.latitude,
-          clusters[j].location.longitude
-        );
-
-        // Check date overlap - only merge if same location AND dates overlap
-        const datesMatch = datesOverlapOrAdjacent(
-          clusters[i].startDate, clusters[i].endDate,
-          clusters[j].startDate, clusters[j].endDate
-        );
-
-        if (distance <= MERGE_THRESHOLD_KM && datesMatch) {
-          // Merge cluster j into cluster i
-          clusters[i].photos = [...clusters[i].photos, ...clusters[j].photos];
-          clusters[i].photos.sort((a, b) => a.creationTime - b.creationTime);
-
-          // Update date range
-          if (clusters[j].startDate < clusters[i].startDate) {
-            clusters[i].startDate = clusters[j].startDate;
-          }
-          if (clusters[j].endDate > clusters[i].endDate) {
-            clusters[i].endDate = clusters[j].endDate;
-          }
-
-          // Recalculate days
-          clusters[i].days = Math.ceil(
-            (clusters[i].endDate - clusters[i].startDate) / (1000 * 60 * 60 * 24)
-          ) + 1;
-
-          // Keep locationName if one has it
-          if (!clusters[i].locationName && clusters[j].locationName) {
-            clusters[i].locationName = clusters[j].locationName;
-          }
-
-          // Remove merged cluster
-          clusters.splice(j, 1);
-          merged = true;
-          break;
-        }
-      }
-      if (merged) break;
-    }
-  }
-
-  return clusters;
-}
-
-// Get emoji and tagline based on location name
-function getLocationVibe(locationName) {
-  if (!locationName) return { emoji: '📍', tagline: 'Your memories' };
-
-  const name = locationName.toLowerCase();
-
-  // Check for location keywords
-  if (name.includes('beach') || name.includes('coast') || name.includes('ocean') || name.includes('sea')) {
-    return { emoji: '🏖️', tagline: 'Beach vibes from' };
-  }
-  if (name.includes('mountain') || name.includes('mount') || name.includes('peak') || name.includes('summit')) {
-    return { emoji: '🏔️', tagline: 'Mountain adventure in' };
-  }
-  if (name.includes('lake') || name.includes('falls') || name.includes('river')) {
-    return { emoji: '🌊', tagline: 'Waterside memories from' };
-  }
-  if (name.includes('forest') || name.includes('park') || name.includes('trail') || name.includes('canyon')) {
-    return { emoji: '🌲', tagline: 'Nature escape to' };
-  }
-  if (name.includes('island')) {
-    return { emoji: '🏝️', tagline: 'Island getaway to' };
-  }
-  if (name.includes('desert') || name.includes('valley')) {
-    return { emoji: '🏜️', tagline: 'Desert adventure in' };
-  }
-  if (name.includes('snow') || name.includes('ski') || name.includes('winter')) {
-    return { emoji: '❄️', tagline: 'Winter wonderland in' };
-  }
-  if (name.includes('vegas') || name.includes('casino')) {
-    return { emoji: '🎰', tagline: 'Good times in' };
-  }
-  if (name.includes('disney') || name.includes('theme') || name.includes('world')) {
-    return { emoji: '🎢', tagline: 'Fun times at' };
-  }
-  if (name.includes('new york') || name.includes('san francisco') || name.includes('los angeles') || name.includes('chicago')) {
-    return { emoji: '🌆', tagline: 'City adventure in' };
-  }
-
-  // Default based on country
-  if (name.includes('japan')) return { emoji: '🗾', tagline: 'Journey to' };
-  if (name.includes('france') || name.includes('paris')) return { emoji: '🗼', tagline: 'Romance in' };
-  if (name.includes('italy') || name.includes('rome')) return { emoji: '🍝', tagline: 'La dolce vita in' };
-  if (name.includes('mexico')) return { emoji: '🌮', tagline: 'Fiesta in' };
-  if (name.includes('hawaii')) return { emoji: '🌺', tagline: 'Aloha from' };
-  if (name.includes('india')) return { emoji: '🕌', tagline: 'Incredible' };
-
-  // Generic adventure
-  return { emoji: '✈️', tagline: 'Your trip to' };
-}
-
-// Group photos by day for section list
-function groupPhotosByDay(photos, tripStartDate) {
-  const groups = {};
-
-  photos.forEach(photo => {
-    const date = new Date(photo.creationTime);
-    const dateKey = date.toDateString();
-
-    if (!groups[dateKey]) {
-      groups[dateKey] = {
-        date,
-        photos: [],
-      };
-    }
-    groups[dateKey].photos.push(photo);
-  });
-
-  // Convert to array and sort by date
-  const sections = Object.values(groups)
-    .sort((a, b) => a.date - b.date)
-    .map((group, index) => {
-      const dayOptions = { weekday: 'long', month: 'short', day: 'numeric' };
-      const dayStr = group.date.toLocaleDateString('en-US', dayOptions);
-
-      return {
-        title: `Day ${index + 1}`,
-        subtitle: dayStr,
-        data: group.photos,
-      };
-    });
-
-  return sections;
-}
 
 const PhotoThumbnail = memo(({ photo, onPress, size = imageSize }) => {
   const [uri, setUri] = useState(() => uriCache.get(photo.id) || null);
@@ -589,283 +117,124 @@ const PhotoThumbnail = memo(({ photo, onPress, size = imageSize }) => {
 });
 
 export default function App() {
-  const [photos, setPhotos] = useState([]);
-  const [clusters, setClusters] = useState([]);
-  const [hasPermission, setHasPermission] = useState(null);
+  // ==========================================
+  // HOOKS - Business logic from custom hooks
+  // ==========================================
+  const photoLoading = usePhotoLoading();
+  const editedLocationsHook = useEditedLocations();
+  const sharedVacationsHook = useSharedVacations();
+  const { photosWithFaces } = useFaceDetection(photoLoading.clusters, photoLoading.loading);
+
+  // Destructure commonly used values from hooks
+  const {
+    photos,
+    clusters,
+    hasPermission,
+    loading,
+    loadingMore,
+    loadingProgress,
+    loadingPercent,
+    hasMore,
+    homeLocation,
+    refreshing,
+    cacheLoaded,
+    error,
+    recentPhotos,
+    detectedLocation,
+    showOnboarding,
+    showLocationSelection,
+    newestPhotoTime,
+    endCursor,
+    loadPhotos,
+    onRefresh,
+    loadMore,
+    initializeApp,
+    handleGetStarted,
+    handleLocationSelected: photoLoadingLocationSelected,
+    handleClearCache,
+    updateClusters,
+    setPhotos,
+    setClusters,
+  } = photoLoading;
+
+  const {
+    editedLocations,
+    saveEditedLocation,
+    applyEditedLocations,
+  } = editedLocationsHook;
+
+  const {
+    sharedVacations,
+    sharedVacationsDismissed,
+    getUploadStatus,
+    loadUploadedVacations,
+    dismissSharedVacations: handleDismissSharedVacations,
+  } = sharedVacationsHook;
+
+  // ==========================================
+  // UI STATE - Navigation and modals
+  // ==========================================
   const [selectedImage, setSelectedImage] = useState(null);
   const [selectedCluster, setSelectedCluster] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [loadingProgress, setLoadingProgress] = useState('');
-  const [loadingPercent, setLoadingPercent] = useState(0);
-  const [endCursor, setEndCursor] = useState(null);
-  const [hasMore, setHasMore] = useState(true);
-  const [homeLocation, setHomeLocation] = useState(null);
-  const [refreshing, setRefreshing] = useState(false);
-  const [newestPhotoTime, setNewestPhotoTime] = useState(null);
-  const [cacheLoaded, setCacheLoaded] = useState(false);
-  const [error, setError] = useState(null);
-  const [recentPhotos, setRecentPhotos] = useState([]); // For loading screen preview
-  const [detectedLocation, setDetectedLocation] = useState(null); // For loading screen
-  const [photosWithFaces, setPhotosWithFaces] = useState({}); // Map of photoId -> hasFaces
-  const [faceDetectionRunning, setFaceDetectionRunning] = useState(false);
-  const [showOnboarding, setShowOnboarding] = useState(null); // null = loading, true = show, false = skip
-  const [showLocationSelection, setShowLocationSelection] = useState(false);
-  const [editingDayPhotos, setEditingDayPhotos] = useState(null); // Photos to update location for
+  const [selectedYear, setSelectedYear] = useState(null);
+  const [sharedVacationId, setSharedVacationId] = useState(null);
+  const [showSharedVacationsList, setShowSharedVacationsList] = useState(false);
+  const [showDetailShareModal, setShowDetailShareModal] = useState(false);
+  const [showDetailLocationModal, setShowDetailLocationModal] = useState(false);
+
+  // Location editing UI state
+  const [editingDayPhotos, setEditingDayPhotos] = useState(null);
   const [showLocationEditModal, setShowLocationEditModal] = useState(false);
   const [locationSearchQuery, setLocationSearchQuery] = useState('');
   const [locationSearchResults, setLocationSearchResults] = useState([]);
   const [selectedEditLocation, setSelectedEditLocation] = useState(null);
   const [searchingLocation, setSearchingLocation] = useState(false);
-  const [selectedYear, setSelectedYear] = useState(null); // For viewing previous year's clusters
-  const [sharedVacationId, setSharedVacationId] = useState(null); // For viewing shared vacation from deep link
-  const [showDetailShareModal, setShowDetailShareModal] = useState(false); // Share modal in detail view
-  const [showDetailLocationModal, setShowDetailLocationModal] = useState(false); // Location edit modal in detail view
 
-  // Shared vacations state (supports multiple)
-  const [sharedVacations, setSharedVacations] = useState([]); // Array of { shareId, vacation, previewPhotos, receivedAt }
-  const [showSharedVacationsList, setShowSharedVacationsList] = useState(false);
-  const [sharedVacationsDismissed, setSharedVacationsDismissed] = useState(false);
-  const [uploadedVacations, setUploadedVacations] = useState({}); // { clusterKey: { shareId, uploadedCount, totalPhotos } }
-  const [editedLocations, setEditedLocations] = useState({}); // { clusterId: { locationName, location } }
+  // ==========================================
+  // EFFECTS
+  // ==========================================
 
-  // Load uploaded vacations mapping
-  const loadUploadedVacations = async () => {
-    const uploaded = await getUploadedVacations();
-    setUploadedVacations(uploaded);
-  };
-
-  // Load edited locations from storage
-  const loadEditedLocations = async () => {
-    try {
-      const saved = await AsyncStorage.getItem(EDITED_LOCATIONS_KEY);
-      if (saved) {
-        setEditedLocations(JSON.parse(saved));
-      }
-    } catch (e) {
-      console.log('Failed to load edited locations:', e);
-    }
-  };
-
-  // Save edited location for a cluster
-  const saveEditedLocation = async (clusterId, locationName, location) => {
-    try {
-      const updated = {
-        ...editedLocations,
-        [clusterId]: { locationName, location },
-      };
-      setEditedLocations(updated);
-      await AsyncStorage.setItem(EDITED_LOCATIONS_KEY, JSON.stringify(updated));
-    } catch (e) {
-      console.log('Failed to save edited location:', e);
-    }
-  };
-
-  // Apply edited locations to clusters
-  const applyEditedLocations = (clustersList, edits) => {
-    if (!edits || Object.keys(edits).length === 0) return clustersList;
-    return clustersList.map(cluster => {
-      const edit = edits[cluster.id];
-      if (edit) {
-        return {
-          ...cluster,
-          locationName: edit.locationName,
-          location: edit.location || cluster.location,
-        };
-      }
-      return cluster;
-    });
-  };
-
-  // Get upload status for a cluster
-  const getUploadStatus = (cluster) => {
-    const clusterKey = getClusterKey(cluster);
-    const entry = uploadedVacations[clusterKey];
-    if (!entry) return null;
-    // If total photos > MAX_PHOTOS, it's partial
-    if (entry.totalPhotos > MAX_PHOTOS) return 'partial';
-    return 'uploaded';
-  };
-
-  // Load saved shared vacations from storage
-  const loadSavedSharedVacations = async () => {
-    try {
-      const saved = await AsyncStorage.getItem(SHARED_VACATIONS_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        // Convert date strings back to Date objects
-        const vacations = parsed.map(sv => ({
-          ...sv,
-          receivedAt: sv.receivedAt ? new Date(sv.receivedAt) : null,
-          vacation: sv.vacation ? {
-            ...sv.vacation,
-            startDate: sv.vacation.startDate ? new Date(sv.vacation.startDate) : null,
-            endDate: sv.vacation.endDate ? new Date(sv.vacation.endDate) : null,
-          } : null,
-        }));
-        setSharedVacations(vacations);
-      }
-    } catch (error) {
-      console.log('Error loading saved shared vacations:', error);
-    }
-  };
-
-  // Save shared vacations to storage
-  const saveSharedVacations = async (vacations) => {
-    try {
-      await AsyncStorage.setItem(SHARED_VACATIONS_KEY, JSON.stringify(vacations));
-    } catch (error) {
-      console.log('Error saving shared vacations:', error);
-    }
-  };
-
-  // Add a new shared vacation from deep link
-  const addSharedVacation = async (shareId) => {
-    console.log('Adding shared vacation:', shareId);
-
-    // Check if already exists
-    if (sharedVacations.some(sv => sv.shareId === shareId)) {
-      console.log('Shared vacation already exists');
-      setSharedVacationsDismissed(false); // Show card again
-      return;
-    }
-
-    try {
-      // Fetch vacation metadata and preview photos in parallel
-      const [vacation, previewPhotos] = await Promise.all([
-        fetchSharedVacation(shareId),
-        fetchPreviewPhotos(shareId),
-      ]);
-
-      const newSharedVacation = {
-        shareId,
-        vacation,
-        previewPhotos,
-        receivedAt: new Date(),
-      };
-
-      const updatedVacations = [newSharedVacation, ...sharedVacations];
-      setSharedVacations(updatedVacations);
-      setSharedVacationsDismissed(false); // Show card
-      saveSharedVacations(updatedVacations);
-    } catch (error) {
-      console.log('Error adding shared vacation:', error);
-    }
-  };
-
-  // Handle card tap - open the list
-  const handleSharedVacationsCardPress = () => {
-    if (sharedVacations.length === 1) {
-      // If only one, go directly to viewer
-      setSharedVacationId(sharedVacations[0].shareId);
-    } else {
-      // If multiple, show list
-      setShowSharedVacationsList(true);
-    }
-  };
-
-  // Handle selecting a vacation from the list
-  const handleSelectSharedVacation = (shareId) => {
-    setShowSharedVacationsList(false);
-    setSharedVacationId(shareId);
-  };
-
-  // Handle dismissing the shared vacations card
-  const handleDismissSharedVacations = () => {
-    setSharedVacationsDismissed(true);
-  };
-
-  // Remove a shared vacation after viewing (optional - could keep for history)
-  const removeSharedVacation = (shareId) => {
-    const updatedVacations = sharedVacations.filter(sv => sv.shareId !== shareId);
-    setSharedVacations(updatedVacations);
-    saveSharedVacations(updatedVacations);
-  };
-
-  // Load saved shared vacations, uploaded vacations, and edited locations on startup
+  // Initialize app on mount
   useEffect(() => {
-    loadSavedSharedVacations();
-    loadUploadedVacations();
-    loadEditedLocations();
+    initializeApp();
   }, []);
 
   // Apply edited locations when they're loaded and clusters exist
   useEffect(() => {
     if (Object.keys(editedLocations).length > 0 && clusters.length > 0) {
-      const updatedClusters = applyEditedLocations(clusters, editedLocations);
-      // Only update if something changed
+      const updatedClusters = applyEditedLocations(clusters);
       const hasChanges = updatedClusters.some((c, i) =>
         c.locationName !== clusters[i].locationName
       );
       if (hasChanges) {
-        setClusters(updatedClusters);
+        updateClusters(updatedClusters);
       }
     }
-  }, [editedLocations]); // Only run when editedLocations changes
+  }, [editedLocations, clusters, applyEditedLocations, updateClusters]);
 
-  // Handle deep links for shared vacations
-  useEffect(() => {
-    // Handle deep link when app is already open
-    const handleDeepLink = (event) => {
-      const shareId = parseShareLink(event.url);
-      if (shareId) {
-        console.log('Deep link received:', shareId);
-        addSharedVacation(shareId);
-      }
-    };
+  // ==========================================
+  // HANDLERS
+  // ==========================================
 
-    // Listen for incoming links
-    const subscription = Linking.addEventListener('url', handleDeepLink);
+  // Wrap location selection to call initializeApp
+  const handleLocationSelected = useCallback((location) => {
+    photoLoadingLocationSelected(location, initializeApp);
+  }, [photoLoadingLocationSelected, initializeApp]);
 
-    // Check if app was opened via deep link (cold start)
-    Linking.getInitialURL().then((url) => {
-      if (url) {
-        const shareId = parseShareLink(url);
-        if (shareId) {
-          console.log('App opened via deep link:', shareId);
-          addSharedVacation(shareId);
-        }
-      }
-    });
-
-    return () => subscription.remove();
+  // Handle card tap - open the list or viewer
+  const handleSharedVacationsCardPress = useCallback(() => {
+    if (sharedVacations.length === 1) {
+      setSharedVacationId(sharedVacations[0].shareId);
+    } else {
+      setShowSharedVacationsList(true);
+    }
   }, [sharedVacations]);
 
-  useEffect(() => {
-    checkOnboarding();
+  // Handle selecting a vacation from the list
+  const handleSelectSharedVacation = useCallback((shareId) => {
+    setShowSharedVacationsList(false);
+    setSharedVacationId(shareId);
   }, []);
-
-  const checkOnboarding = async () => {
-    try {
-      const completed = await AsyncStorage.getItem(ONBOARDING_KEY);
-      if (completed === 'true') {
-        setShowOnboarding(false);
-        initializeApp();
-      } else {
-        setShowOnboarding(true);
-      }
-    } catch (e) {
-      setShowOnboarding(true);
-    }
-  };
-
-  const handleGetStarted = async () => {
-    setShowOnboarding(false);
-    await AsyncStorage.setItem(ONBOARDING_KEY, 'true');
-    setShowLocationSelection(true);
-  };
-
-  const handleLocationSelected = async (location) => {
-    setShowLocationSelection(false);
-    const home = {
-      latitude: location.latitude,
-      longitude: location.longitude,
-    };
-    setHomeLocation(home);
-    setDetectedLocation(location.displayName);
-    // Pass home directly to avoid stale state issues
-    initializeApp(home);
-  };
 
   // Search for locations using Nominatim API
   const searchLocations = async (query) => {
@@ -972,412 +341,6 @@ export default function App() {
     }
   };
 
-  // Background face detection - runs after initial load is complete
-  useEffect(() => {
-    if (!loading && !faceDetectionRunning && clusters.length > 0 && Object.keys(photosWithFaces).length === 0) {
-      runBackgroundFaceDetection();
-    }
-  }, [loading, clusters]);
-
-  // Auto-check for new photos when app comes to foreground
-  const lastRefreshRef = useRef(0);
-  const REFRESH_DEBOUNCE_MS = 30000; // 30 seconds minimum between auto-refreshes
-
-  useEffect(() => {
-    if (!homeLocation || photos.length === 0) return;
-
-    const subscription = AppState.addEventListener('change', (nextAppState) => {
-      if (nextAppState === 'active') {
-        // Refresh uploaded vacations status
-        loadUploadedVacations();
-
-        const now = Date.now();
-        if (now - lastRefreshRef.current > REFRESH_DEBOUNCE_MS) {
-          if (!loading && !loadingMore && !refreshing) {
-            lastRefreshRef.current = now;
-            console.log('App became active, checking for new photos...');
-            loadPhotos('refresh', homeLocation);
-          }
-        }
-      }
-    });
-
-    return () => subscription.remove();
-  }, [homeLocation, photos.length, loading, loadingMore, refreshing]);
-
-  const runBackgroundFaceDetection = async () => {
-    // Check if FaceDetector module is available
-    if (!faceDetectorAvailable || !FaceDetector || !FaceDetector.detectFacesAsync) {
-      console.log('Face detection skipped (requires development build)');
-      return;
-    }
-
-    setFaceDetectionRunning(true);
-
-    // Get a test photo to verify FaceDetector actually works
-    const testCluster = clusters.find(c => c.photos.length > 0);
-    if (!testCluster) {
-      setFaceDetectionRunning(false);
-      return;
-    }
-
-    // Test with first photo to see if native module works
-    try {
-      const testInfo = await MediaLibrary.getAssetInfoAsync(testCluster.photos[0].id);
-      const testUri = testInfo.localUri || testInfo.uri;
-      if (testUri) {
-        await FaceDetector.detectFacesAsync(testUri, {
-          mode: FaceDetector.FaceDetectorMode.fast,
-        });
-      }
-    } catch (e) {
-      // Native module not available - disable face detection for this session
-      faceDetectorAvailable = false;
-      console.log('Face detection disabled (native module not available in Expo Go)');
-      setFaceDetectionRunning(false);
-      return;
-    }
-
-    console.log('Starting background face detection...');
-
-    const facesMap = {};
-    let processedCount = 0;
-    let photosWithFacesCount = 0;
-
-    // Process photos from each cluster to find ones with faces
-    for (const cluster of clusters) {
-      // Only check first 10 photos per cluster for performance
-      const photosToCheck = cluster.photos.slice(0, 10);
-
-      for (const photo of photosToCheck) {
-        if (facesMap[photo.id] !== undefined) continue; // Already checked
-
-        try {
-          const info = await MediaLibrary.getAssetInfoAsync(photo.id);
-          const uri = info.localUri || info.uri;
-
-          if (uri) {
-            const result = await FaceDetector.detectFacesAsync(uri, {
-              mode: FaceDetector.FaceDetectorMode.fast,
-              detectLandmarks: FaceDetector.FaceDetectorLandmarks.none,
-              runClassifications: FaceDetector.FaceDetectorClassifications.none,
-            });
-
-            const hasFaces = result.faces && result.faces.length > 0;
-            facesMap[photo.id] = hasFaces;
-
-            if (hasFaces) {
-              photosWithFacesCount++;
-            }
-          }
-        } catch (e) {
-          // Silently skip errors for individual photos
-          facesMap[photo.id] = false;
-        }
-
-        processedCount++;
-
-        // Update state periodically to show progress
-        if (processedCount % 20 === 0) {
-          setPhotosWithFaces({ ...facesMap });
-        }
-      }
-    }
-
-    setPhotosWithFaces(facesMap);
-    setFaceDetectionRunning(false);
-    console.log(`Face detection complete: ${photosWithFacesCount} photos with faces out of ${processedCount} checked`);
-  };
-
-  const initializeApp = async (selectedHome = null) => {
-    // First, try to load cached data
-    const cached = await loadCache();
-    if (cached && cached.photos && cached.clusters) {
-      console.log('Loaded from cache:', cached.photos.length, 'photos');
-      // Build photos lookup
-      const photosById = {};
-      cached.photos.forEach(p => { photosById[p.id] = p; });
-      // Rebuild clusters with full photo objects
-      const rebuiltClusters = rebuildClusters(cached.clusters, photosById);
-      setPhotos(cached.photos);
-      setClusters(rebuiltClusters);
-      setHomeLocation(cached.homeLocation);
-      setNewestPhotoTime(cached.newestPhotoTime);
-      setEndCursor(cached.endCursor);
-      setHasMore(cached.hasMore !== false);
-      setCacheLoaded(true);
-    }
-    // Then request permissions (will refresh if needed)
-    // Pass selectedHome if provided (from location selection), or use cached
-    requestPermissions(cached, selectedHome);
-  };
-
-  const requestPermissions = async (cached, selectedHome = null) => {
-    const { status: locationStatus } = await Location.requestForegroundPermissionsAsync();
-
-    // Priority: selectedHome > cached.homeLocation > homeLocation state
-    let home = selectedHome || cached?.homeLocation || homeLocation;
-
-    // If no home location is set, show location selection screen instead of auto-detecting
-    if (locationStatus === 'granted' && !home) {
-      console.log('[HOME] No home found, showing location selection...');
-      setShowLocationSelection(true);
-      return; // Don't proceed until user selects home
-    }
-
-    const { status: mediaStatus } = await MediaLibrary.requestPermissionsAsync();
-    setHasPermission(mediaStatus === 'granted' && locationStatus === 'granted');
-
-    // Only do full load if no cache exists
-    if (mediaStatus === 'granted' && locationStatus === 'granted' && home && !cached) {
-      loadPhotos('initial', home);
-    }
-  };
-
-  const loadPhotos = async (mode = 'initial', home = homeLocation) => {
-    // mode: 'initial' | 'refresh' | 'loadMore'
-    console.log('loadPhotos called with mode:', mode);
-    if (!home) return;
-
-    const isLoadMore = mode === 'loadMore';
-    const isRefresh = mode === 'refresh';
-
-    // Clear previous errors
-    setError(null);
-
-    if (isLoadMore) {
-      setLoadingMore(true);
-    } else if (isRefresh) {
-      setRefreshing(true);
-    } else {
-      setLoading(true);
-      setLoadingPercent(0);
-    }
-    setLoadingProgress(isRefresh ? 'Checking for new photos...' : 'Fetching photos...');
-
-    try {
-
-    const queryOptions = {
-      mediaType: 'photo',
-      first: isRefresh ? 500 : 300, // Smaller batch to avoid skipping photos on early break
-      sortBy: ['creationTime'],
-    };
-
-    if (isLoadMore && endCursor) {
-      queryOptions.after = endCursor;
-    }
-
-    const result = await MediaLibrary.getAssetsAsync(queryOptions);
-    const { assets, endCursor: newCursor, hasNextPage } = result;
-
-    // For refresh, only process photos newer than what we have
-    let assetsToProcess = assets;
-    if (isRefresh && newestPhotoTime) {
-      assetsToProcess = assets.filter(a => a.creationTime > newestPhotoTime);
-      if (assetsToProcess.length === 0) {
-        console.log('No new photos found');
-        setRefreshing(false);
-        return;
-      }
-      console.log(`Found ${assetsToProcess.length} new photos`);
-    }
-
-    if (!isRefresh) {
-      setEndCursor(newCursor);
-      setHasMore(hasNextPage);
-    }
-
-    setLoadingProgress('Finding vacation photos...');
-    const vacationPhotos = [];
-    let noLocationCount = 0;
-    let tooCloseCount = 0;
-    let processedCount = 0;
-    let geocodedCount = 0; // Track separately for early location display
-
-    // Process photos in parallel batches for much faster loading
-    const BATCH_SIZE = 15;
-
-    for (let i = 0; i < assetsToProcess.length; i += BATCH_SIZE) {
-      const batch = assetsToProcess.slice(i, i + BATCH_SIZE);
-
-      // Process batch in parallel
-      const results = await Promise.all(batch.map(processAsset));
-
-      for (const result of results) {
-        if (!result) continue;
-
-        const { asset, info, photoUri } = result;
-        processedCount++;
-
-        // Show photo thumbnails as we scan (every batch)
-        if (!isRefresh && photoUri && processedCount % BATCH_SIZE === 0) {
-          setRecentPhotos(prev => [...prev.slice(-3), { id: asset.id, uri: photoUri }]);
-        }
-
-        // Include photos without location in a separate group
-        if (!info.location || info.location.latitude == null) {
-          noLocationCount++;
-          vacationPhotos.push({
-            ...asset,
-            location: null,
-            distanceFromHome: null,
-          });
-          continue;
-        }
-
-        const distanceFromHome = getDistanceKm(
-          home.latitude,
-          home.longitude,
-          Number(info.location.latitude),
-          Number(info.location.longitude)
-        );
-
-        if (distanceFromHome < KM_FROM_HOME) {
-          tooCloseCount++;
-          continue;
-        }
-
-        vacationPhotos.push({
-          ...asset,
-          location: info.location,
-          distanceFromHome,
-        });
-
-        // Quick geocode first vacation photo WITH location to show during scanning
-        if (!isRefresh && geocodedCount < 1 && info.location) {
-          geocodedCount++;
-          try {
-            const results = await Location.reverseGeocodeAsync({
-              latitude: Number(info.location.latitude),
-              longitude: Number(info.location.longitude),
-            });
-            if (results && results.length > 0) {
-              const place = results[0];
-              const name = place.city || place.district || place.subregion || place.name;
-              const country = place.country || place.isoCountryCode;
-              const locationName = [name, country].filter(Boolean).join(', ');
-              console.log('Early geocode:', locationName);
-              setDetectedLocation(locationName);
-              setLoadingProgress(`Found ${locationName}...`);
-            }
-          } catch (e) {
-            console.log('Early geocode error:', e.message);
-          }
-        }
-      }
-
-      // Update progress after each batch
-      if (!isRefresh) {
-        const percent = Math.round((processedCount / assetsToProcess.length) * 100);
-        setLoadingPercent(percent);
-        setLoadingProgress(`Scanning photos... ${processedCount}/${assetsToProcess.length}`);
-      }
-    }
-
-    console.log(`Processed: ${processedCount}, No location: ${noLocationCount}, Too close (<${MILES_FROM_HOME}mi): ${tooCloseCount}, Vacation photos: ${vacationPhotos.length}`);
-
-    // Merge photos based on mode
-    let allPhotos;
-    if (isRefresh) {
-      // Prepend new photos to existing ones
-      allPhotos = [...vacationPhotos, ...photos];
-    } else if (isLoadMore) {
-      allPhotos = [...photos, ...vacationPhotos];
-    } else {
-      allPhotos = vacationPhotos;
-    }
-    setPhotos(allPhotos);
-
-    // Track newest photo time for incremental refresh
-    if (allPhotos.length > 0) {
-      const newest = Math.max(...allPhotos.map(p => p.creationTime));
-      setNewestPhotoTime(newest);
-    }
-
-    setLoadingProgress('Clustering vacations...');
-    const clustered = clusterPhotos(allPhotos);
-
-    // Preserve locationName from existing clusters to avoid re-geocoding
-    if (isLoadMore && clusters.length > 0) {
-      for (const newCluster of clustered) {
-        if (!newCluster.location) continue;
-
-        for (const oldCluster of clusters) {
-          if (!oldCluster.location || !oldCluster.locationName) continue;
-
-          const distance = getDistanceKm(
-            newCluster.location.latitude,
-            newCluster.location.longitude,
-            oldCluster.location.latitude,
-            oldCluster.location.longitude
-          );
-
-          if (distance < 10) { // Within 10km = same location
-            newCluster.locationName = oldCluster.locationName;
-            break;
-          }
-        }
-      }
-    }
-
-    // Geocode clusters in parallel for faster loading
-    setLoadingProgress('Getting location names...');
-    await geocodeClustersInParallel(clustered);
-
-    // Update detected location with the first cluster's name
-    const firstWithName = clustered.find(c => c.locationName);
-    if (firstWithName) {
-      setDetectedLocation(firstWithName.locationName);
-    }
-
-    setClusters(clustered);
-
-    // Save to cache
-    const cacheData = {
-      photos: allPhotos.map(extractPhotoMetadata),
-      clusters: clustered.map(extractClusterMetadata),
-      homeLocation: home,
-      newestPhotoTime: Math.max(...allPhotos.map(p => p.creationTime)),
-      endCursor: newCursor,
-      hasMore: hasNextPage,
-    };
-    await saveCache(cacheData);
-    console.log('Saved to cache:', allPhotos.length, 'photos');
-
-    if (isLoadMore) {
-      setLoadingMore(false);
-    } else if (isRefresh) {
-      setRefreshing(false);
-    } else {
-      setLoading(false);
-    }
-    } catch (err) {
-      console.error('Error loading photos:', err);
-      setError({
-        message: 'Failed to load photos',
-        details: err.message,
-        retry: () => loadPhotos(mode, home),
-      });
-      if (isLoadMore) {
-        setLoadingMore(false);
-      } else if (isRefresh) {
-        setRefreshing(false);
-      } else {
-        setLoading(false);
-      }
-    }
-  };
-
-  const onRefresh = useCallback(() => {
-    loadPhotos('refresh');
-  }, [photos, newestPhotoTime, homeLocation]);
-
-  const loadMore = () => {
-    if (!loadingMore && hasMore) {
-      loadPhotos('loadMore');
-    }
-  };
-
   const handleViewAll = useCallback((cluster) => {
     setSelectedCluster(cluster);
   }, []);
@@ -1399,19 +362,6 @@ export default function App() {
       return cluster;
     }));
   }, []);
-
-  const handleClearCache = async () => {
-    await clearCache();
-    await AsyncStorage.removeItem(ONBOARDING_KEY);
-    setPhotos([]);
-    setClusters([]);
-    setCacheLoaded(false);
-    setRecentPhotos([]);
-    setDetectedLocation(null);
-    setHomeLocation(null);
-    setShowLocationSelection(false);
-    setShowOnboarding(true);
-  };
 
   // Group clusters: current year shown individually, previous years as year cards
   const getGroupedClusterItems = () => {
