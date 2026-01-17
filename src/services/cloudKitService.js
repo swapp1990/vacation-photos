@@ -83,14 +83,36 @@ export async function fetchPreviewPhotos(shareId) {
   }));
 }
 
-// Generate a share link
+// Domain for Universal Links (used by App Clip)
+// Using GitHub Pages: https://swapp1990.github.io/share/{shareId}
+const UNIVERSAL_LINK_DOMAIN = 'swapp1990.github.io';
+
+// Generate a share link using Universal Links for App Clip support
 export function generateShareLink(shareId) {
+  // Use Universal Link format for App Clip compatibility
+  return `https://${UNIVERSAL_LINK_DOMAIN}/share/${shareId}`;
+}
+
+// Generate legacy custom scheme link (for backward compatibility)
+export function generateLegacyShareLink(shareId) {
   return `vacationphotos://share/${shareId}`;
 }
 
 // Parse a share link to extract shareId
 export function parseShareLink(url) {
   if (!url) return null;
+
+  // Handle GitHub Pages Universal Link: https://swapp1990.github.io/share/{shareId}
+  const githubPagesMatch = url.match(/github\.io\/share\/([a-zA-Z0-9-]+)/);
+  if (githubPagesMatch) {
+    return githubPagesMatch[1];
+  }
+
+  // Handle any /share/{shareId} pattern
+  const sharePathMatch = url.match(/\/share\/([a-zA-Z0-9-]+)/);
+  if (sharePathMatch) {
+    return sharePathMatch[1];
+  }
 
   // Handle custom scheme: vacationphotos://share/{shareId}
   const customSchemeMatch = url.match(/^vacationphotos:\/\/share\/([a-zA-Z0-9-]+)/);
@@ -115,5 +137,6 @@ export default {
   fetchSharedPhotos,
   fetchPreviewPhotos,
   generateShareLink,
+  generateLegacyShareLink,
   parseShareLink,
 };

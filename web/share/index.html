@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="apple-itunes-app" content="app-id=6756803475, app-clip-bundle-id=com.swapp1990.vacationphotos.Clip">
+  <title>Shared Vacation Photos</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .container {
+      background: white;
+      border-radius: 24px;
+      padding: 48px;
+      max-width: 400px;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+    }
+    .emoji {
+      font-size: 64px;
+      margin-bottom: 24px;
+    }
+    h1 {
+      color: #1E293B;
+      font-size: 24px;
+      margin-bottom: 12px;
+    }
+    .subtitle {
+      color: #6366F1;
+      font-size: 16px;
+      font-weight: 500;
+      margin-bottom: 8px;
+    }
+    p {
+      color: #64748B;
+      font-size: 15px;
+      line-height: 1.5;
+      margin-bottom: 32px;
+    }
+    .app-store-button {
+      display: inline-block;
+      background: #6366F1;
+      color: white;
+      padding: 16px 32px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 16px;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .app-store-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(99,102,241,0.4);
+    }
+    .note {
+      margin-top: 24px;
+      color: #94A3B8;
+      font-size: 13px;
+    }
+    .loading {
+      display: none;
+    }
+    .loading.show {
+      display: block;
+      color: #6366F1;
+      margin-bottom: 16px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="emoji">🌴</div>
+    <p class="loading" id="loading">Opening in Vacation Photos...</p>
+    <h1>Someone shared vacation photos with you!</h1>
+    <p class="subtitle">View them in the Vacation Photos app</p>
+    <p>Tap below to open the App Clip and view the photos instantly, or download the full app.</p>
+    <a href="https://apps.apple.com/app/id6756803475" class="app-store-button" id="appButton">
+      Get Vacation Photos
+    </a>
+    <p class="note">On iPhone, this will open an instant preview.<br>No download required!</p>
+  </div>
+
+  <script>
+    // Try to open the app/app clip
+    const path = window.location.pathname;
+    const shareId = path.split('/share/')[1];
+
+    if (shareId) {
+      // Show loading state
+      document.getElementById('loading').classList.add('show');
+
+      // Try to open the app via Universal Link
+      // iOS will intercept this if the app/clip is available
+      setTimeout(() => {
+        // If we're still here after 1.5s, the app didn't open
+        document.getElementById('loading').classList.remove('show');
+      }, 1500);
+    }
+  </script>
+</body>
+</html>

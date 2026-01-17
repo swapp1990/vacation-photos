@@ -32,6 +32,22 @@ function withCloudKitFiles(config) {
         console.log('[withCloudKit] WARNING: CloudKitBridge.m not found at', bridgeSource);
       }
 
+      // Copy AppGroupStorage.swift
+      const appGroupSwiftSource = path.join(sourceDir, 'AppGroupStorage.swift');
+      const appGroupSwiftTarget = path.join(targetDir, 'AppGroupStorage.swift');
+      if (fs.existsSync(appGroupSwiftSource)) {
+        fs.copyFileSync(appGroupSwiftSource, appGroupSwiftTarget);
+        console.log('[withCloudKit] Copied AppGroupStorage.swift');
+      }
+
+      // Copy AppGroupStorageBridge.m
+      const appGroupBridgeSource = path.join(sourceDir, 'AppGroupStorageBridge.m');
+      const appGroupBridgeTarget = path.join(targetDir, 'AppGroupStorageBridge.m');
+      if (fs.existsSync(appGroupBridgeSource)) {
+        fs.copyFileSync(appGroupBridgeSource, appGroupBridgeTarget);
+        console.log('[withCloudKit] Copied AppGroupStorageBridge.m');
+      }
+
       // Update bridging header
       const bridgingHeaderPath = path.join(targetDir, `${projectName}-Bridging-Header.h`);
       const bridgingHeaderContent = `//
@@ -95,6 +111,29 @@ function withCloudKitXcode(config) {
       console.log('[withCloudKit] Added CloudKitBridge.m to Xcode project');
     } catch (e) {
       console.log('[withCloudKit] CloudKitBridge.m may already exist');
+    }
+
+    // Add AppGroupStorage files
+    try {
+      xcodeProject.addSourceFile(
+        `${projectName}/AppGroupStorage.swift`,
+        { target: mainTargetUuid },
+        groupKey
+      );
+      console.log('[withCloudKit] Added AppGroupStorage.swift to Xcode project');
+    } catch (e) {
+      console.log('[withCloudKit] AppGroupStorage.swift may already exist');
+    }
+
+    try {
+      xcodeProject.addSourceFile(
+        `${projectName}/AppGroupStorageBridge.m`,
+        { target: mainTargetUuid },
+        groupKey
+      );
+      console.log('[withCloudKit] Added AppGroupStorageBridge.m to Xcode project');
+    } catch (e) {
+      console.log('[withCloudKit] AppGroupStorageBridge.m may already exist');
     }
 
     return config;

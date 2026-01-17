@@ -54,6 +54,7 @@ import {
   MILES_FROM_HOME,
 } from './src/utils/clusteringUtils';
 import { getLocationVibe } from './src/utils/vibeUtils';
+import { getPendingShare, clearPendingShare } from './src/utils/appGroupStorage';
 import {
   usePhotoLoading,
   useEditedLocations,
@@ -190,6 +191,10 @@ export default function App() {
   const [selectedEditLocation, setSelectedEditLocation] = useState(null);
   const [searchingLocation, setSearchingLocation] = useState(false);
 
+  // App Clip handoff state
+  const [pendingAppClipShare, setPendingAppClipShare] = useState(null);
+  const [showAppClipPrompt, setShowAppClipPrompt] = useState(false);
+
   // ==========================================
   // EFFECTS
   // ==========================================
@@ -197,6 +202,29 @@ export default function App() {
   // Initialize app on mount
   useEffect(() => {
     initializeApp();
+  }, []);
+
+  // Check for pending share from App Clip
+  useEffect(() => {
+    const checkPendingShare = async () => {
+      try {
+        const pending = await getPendingShare();
+        if (pending && pending.shareId) {
+          console.log('[App] Found pending share from App Clip:', pending.shareId);
+          setPendingAppClipShare(pending.shareId);
+          // Immediately show the shared vacation
+          setSharedVacationId(pending.shareId);
+          // Clear the pending share
+          await clearPendingShare();
+          // After they view it, we'll prompt them to continue
+          setShowAppClipPrompt(true);
+        }
+      } catch (error) {
+        console.log('[App] Error checking pending share:', error);
+      }
+    };
+
+    checkPendingShare();
   }, []);
 
   // Apply edited locations when they're loaded and clusters exist
