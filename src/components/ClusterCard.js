@@ -1,7 +1,9 @@
 import React, { useState, useEffect, memo } from 'react';
 import { View, Text, TouchableOpacity, Image } from 'react-native';
 import * as MediaLibrary from 'expo-media-library';
+import { Ionicons } from '@expo/vector-icons';
 import styles from '../styles/appStyles';
+import { colors } from '../styles/theme';
 import { uriCache } from '../utils/photoProcessing';
 import ShareModal from './ShareModal';
 
@@ -194,14 +196,14 @@ export function ClusterCard({ cluster, onViewAll, photosWithFaces = {}, uploadSt
 
         {/* Info Section */}
         <View style={styles.clusterInfo}>
-          <View style={styles.clusterLocationRow}>
+          <View style={styles.clusterTopRow}>
             <Text style={styles.clusterLocationText} numberOfLines={1}>{locationName}</Text>
             <TouchableOpacity
               onPress={onSharePress}
               style={styles.shareButton}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              activeOpacity={0.7}
             >
-              <Text style={styles.shareButtonText}>↗</Text>
+              <Ionicons name="arrow-redo" size={20} color={colors.primary} />
             </TouchableOpacity>
           </View>
           <View style={styles.clusterMeta}>

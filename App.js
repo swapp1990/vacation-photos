@@ -31,16 +31,20 @@ try {
   faceDetectorAvailable = false;
 }
 
+import { Ionicons } from '@expo/vector-icons';
+
 // Import reusable components and styles
 import {
   Screen,
   LocationSelectionScreen,
+  LocationSearchModal,
   YearDetailView,
   ClusterCard,
   YearCard,
   CollapsedClusterCard,
   CollagePhoto,
   formatDateRange,
+  ShareModal,
 } from './src/components';
 import SharedVacationViewer from './src/components/SharedVacationViewer';
 import SharedVacationsCard from './src/components/SharedVacationsCard';
@@ -49,7 +53,9 @@ import { parseShareLink, fetchSharedVacation, fetchPreviewPhotos } from './src/s
 import { getUploadedVacations, getClusterKey, MAX_PHOTOS } from './src/services/photoUploadService';
 
 const SHARED_VACATIONS_KEY = 'shared_vacations';
+const EDITED_LOCATIONS_KEY = 'edited_cluster_locations';
 import styles, { imageSize } from './src/styles/appStyles';
+import { colors } from './src/styles/theme';
 import {
   loadCache,
   saveCache,
@@ -191,6 +197,56 @@ function inferMissingLocations(photos) {
   return sorted;
 }
 
+// Find the most common location from a list of day locations
+// Groups nearby locations and returns the centroid of the largest group
+function getMostCommonLocation(dayLocations, thresholdKm) {
+  if (dayLocations.length === 0) return null;
+  if (dayLocations.length === 1) return dayLocations[0];
+
+  // Group locations that are within threshold of each other
+  const groups = [];
+
+  for (const loc of dayLocations) {
+    let addedToGroup = false;
+
+    for (const group of groups) {
+      // Check if this location is near the group's centroid
+      const groupCentroid = {
+        latitude: group.locations.reduce((sum, l) => sum + l.latitude, 0) / group.locations.length,
+        longitude: group.locations.reduce((sum, l) => sum + l.longitude, 0) / group.locations.length,
+      };
+
+      const distance = getDistanceKm(
+        loc.latitude,
+        loc.longitude,
+        groupCentroid.latitude,
+        groupCentroid.longitude
+      );
+
+      if (distance <= thresholdKm) {
+        group.locations.push(loc);
+        addedToGroup = true;
+        break;
+      }
+    }
+
+    if (!addedToGroup) {
+      groups.push({ locations: [loc] });
+    }
+  }
+
+  // Find the group with the most days (locations)
+  const largestGroup = groups.reduce((max, group) =>
+    group.locations.length > max.locations.length ? group : max
+  );
+
+  // Return the centroid of the largest group
+  return {
+    latitude: largestGroup.locations.reduce((sum, l) => sum + l.latitude, 0) / largestGroup.locations.length,
+    longitude: largestGroup.locations.reduce((sum, l) => sum + l.longitude, 0) / largestGroup.locations.length,
+  };
+}
+
 function clusterPhotos(photosWithMeta) {
   if (photosWithMeta.length === 0) return [];
 
@@ -262,7 +318,8 @@ function clusterPhotos(photosWithMeta) {
         if (dayCluster.endDate > cluster.endDate) {
           cluster.endDate = dayCluster.endDate;
         }
-        // Keep the original cluster's location (from first day)
+        // Track this day's location for later - we'll pick the most common one
+        cluster.dayLocations.push(dayCluster.location);
         merged = true;
         break;
       }
@@ -275,9 +332,18 @@ function clusterPhotos(photosWithMeta) {
         startDate: dayCluster.startDate,
         endDate: dayCluster.endDate,
         location: dayCluster.location,
+        dayLocations: [dayCluster.location], // Track all day locations
         locationName: null,
       });
     }
+  }
+
+  // Step 4: For each cluster, pick the location where user stayed most days
+  for (const cluster of clusters) {
+    if (cluster.dayLocations && cluster.dayLocations.length > 1) {
+      cluster.location = getMostCommonLocation(cluster.dayLocations, CLUSTER_THRESHOLD_KM);
+    }
+    delete cluster.dayLocations; // Clean up temporary field
   }
 
   // Add unknown location cluster if it exists
@@ -553,17 +619,62 @@ export default function App() {
   const [searchingLocation, setSearchingLocation] = useState(false);
   const [selectedYear, setSelectedYear] = useState(null); // For viewing previous year's clusters
   const [sharedVacationId, setSharedVacationId] = useState(null); // For viewing shared vacation from deep link
+  const [showDetailShareModal, setShowDetailShareModal] = useState(false); // Share modal in detail view
+  const [showDetailLocationModal, setShowDetailLocationModal] = useState(false); // Location edit modal in detail view
 
   // Shared vacations state (supports multiple)
   const [sharedVacations, setSharedVacations] = useState([]); // Array of { shareId, vacation, previewPhotos, receivedAt }
   const [showSharedVacationsList, setShowSharedVacationsList] = useState(false);
   const [sharedVacationsDismissed, setSharedVacationsDismissed] = useState(false);
   const [uploadedVacations, setUploadedVacations] = useState({}); // { clusterKey: { shareId, uploadedCount, totalPhotos } }
+  const [editedLocations, setEditedLocations] = useState({}); // { clusterId: { locationName, location } }
 
   // Load uploaded vacations mapping
   const loadUploadedVacations = async () => {
     const uploaded = await getUploadedVacations();
     setUploadedVacations(uploaded);
+  };
+
+  // Load edited locations from storage
+  const loadEditedLocations = async () => {
+    try {
+      const saved = await AsyncStorage.getItem(EDITED_LOCATIONS_KEY);
+      if (saved) {
+        setEditedLocations(JSON.parse(saved));
+      }
+    } catch (e) {
+      console.log('Failed to load edited locations:', e);
+    }
+  };
+
+  // Save edited location for a cluster
+  const saveEditedLocation = async (clusterId, locationName, location) => {
+    try {
+      const updated = {
+        ...editedLocations,
+        [clusterId]: { locationName, location },
+      };
+      setEditedLocations(updated);
+      await AsyncStorage.setItem(EDITED_LOCATIONS_KEY, JSON.stringify(updated));
+    } catch (e) {
+      console.log('Failed to save edited location:', e);
+    }
+  };
+
+  // Apply edited locations to clusters
+  const applyEditedLocations = (clustersList, edits) => {
+    if (!edits || Object.keys(edits).length === 0) return clustersList;
+    return clustersList.map(cluster => {
+      const edit = edits[cluster.id];
+      if (edit) {
+        return {
+          ...cluster,
+          locationName: edit.locationName,
+          location: edit.location || cluster.location,
+        };
+      }
+      return cluster;
+    });
   };
 
   // Get upload status for a cluster
@@ -671,11 +782,26 @@ export default function App() {
     saveSharedVacations(updatedVacations);
   };
 
-  // Load saved shared vacations and uploaded vacations on startup
+  // Load saved shared vacations, uploaded vacations, and edited locations on startup
   useEffect(() => {
     loadSavedSharedVacations();
     loadUploadedVacations();
+    loadEditedLocations();
   }, []);
+
+  // Apply edited locations when they're loaded and clusters exist
+  useEffect(() => {
+    if (Object.keys(editedLocations).length > 0 && clusters.length > 0) {
+      const updatedClusters = applyEditedLocations(clusters, editedLocations);
+      // Only update if something changed
+      const hasChanges = updatedClusters.some((c, i) =>
+        c.locationName !== clusters[i].locationName
+      );
+      if (hasChanges) {
+        setClusters(updatedClusters);
+      }
+    }
+  }, [editedLocations]); // Only run when editedLocations changes
 
   // Handle deep links for shared vacations
   useEffect(() => {
@@ -1256,6 +1382,24 @@ export default function App() {
     setSelectedCluster(cluster);
   }, []);
 
+  // Handle location edit from ClusterCard
+  const handleLocationEdit = useCallback((clusterId, locationName, location) => {
+    // Save the edited location
+    saveEditedLocation(clusterId, locationName, location);
+
+    // Update the cluster in state immediately
+    setClusters(prevClusters => prevClusters.map(cluster => {
+      if (cluster.id === clusterId) {
+        return {
+          ...cluster,
+          locationName,
+          location: location || cluster.location,
+        };
+      }
+      return cluster;
+    }));
+  }, []);
+
   const handleClearCache = async () => {
     await clearCache();
     await AsyncStorage.removeItem(ONBOARDING_KEY);
@@ -1497,6 +1641,25 @@ export default function App() {
                 {' · '}{selectedCluster.photos.length} photos
                 {selectedCluster.days > 1 ? ` · ${selectedCluster.days} days` : ''}
               </Text>
+              {/* Action buttons */}
+              <View style={styles.tripActionButtons}>
+                <TouchableOpacity
+                  style={styles.tripActionButton}
+                  onPress={() => setShowDetailLocationModal(true)}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="location-outline" size={16} color={colors.text.secondary} />
+                  <Text style={styles.tripActionButtonText}>Edit Location</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.tripActionButton}
+                  onPress={() => setShowDetailShareModal(true)}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="arrow-redo" size={16} color={colors.primary} />
+                  <Text style={[styles.tripActionButtonText, { color: colors.primary }]}>Share</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
           <SectionList
@@ -1630,6 +1793,34 @@ export default function App() {
               </View>
             </SafeAreaView>
           </Modal>
+
+          {/* Share Modal for detail view */}
+          <ShareModal
+            visible={showDetailShareModal}
+            onClose={() => setShowDetailShareModal(false)}
+            cluster={selectedCluster}
+            onShareComplete={loadUploadedVacations}
+          />
+
+          {/* Location Edit Modal for detail view */}
+          <LocationSearchModal
+            visible={showDetailLocationModal}
+            onClose={() => setShowDetailLocationModal(false)}
+            onLocationSelected={(location) => {
+              handleLocationEdit(selectedCluster.id, location.displayName, {
+                latitude: location.latitude,
+                longitude: location.longitude,
+              });
+              // Update the selected cluster directly to reflect the change
+              setSelectedCluster(prev => ({
+                ...prev,
+                locationName: location.displayName,
+                location: { latitude: location.latitude, longitude: location.longitude },
+              }));
+            }}
+            title="Edit Location"
+            currentLocation={selectedCluster?.locationName || ''}
+          />
         </SafeAreaView>
       </SafeAreaProvider>
     );

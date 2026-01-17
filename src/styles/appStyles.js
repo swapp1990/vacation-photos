@@ -232,19 +232,19 @@ export default StyleSheet.create({
   clusterInfo: {
     padding: spacing.lg,
   },
-  clusterLocationRow: {
+  clusterTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: spacing.xs,
-  },
-  clusterLocationIcon: {
-    fontSize: 14,
-    marginRight: spacing.xs,
   },
   clusterLocationText: {
     ...typography.headline,
     color: colors.text.primary,
     flex: 1,
+  },
+  shareButton: {
+    paddingLeft: spacing.lg,
   },
   clusterMeta: {
     flexDirection: 'row',
@@ -258,14 +258,6 @@ export default StyleSheet.create({
     ...typography.caption,
     color: colors.text.muted,
     marginHorizontal: spacing.sm,
-  },
-  shareButton: {
-    padding: spacing.xs,
-    marginLeft: spacing.sm,
-  },
-  shareButtonText: {
-    fontSize: 18,
-    color: colors.primary,
   },
   clusterHeader: {
     flexDirection: 'row',
@@ -614,6 +606,27 @@ export default StyleSheet.create({
     ...typography.subhead,
     color: colors.text.secondary,
     textAlign: 'center',
+  },
+  tripActionButtons: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: spacing.lg,
+    gap: spacing.lg,
+  },
+  tripActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  tripActionButtonText: {
+    ...typography.subhead,
+    color: colors.text.secondary,
+    marginLeft: spacing.sm,
   },
   tripHint: {
     ...typography.caption,
