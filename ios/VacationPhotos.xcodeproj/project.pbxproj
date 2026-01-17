@@ -728,7 +728,7 @@
 				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
 				CODE_SIGN_ENTITLEMENTS = VacationPhotosClip/VacationPhotosClip.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_ASSET_PATHS = "\"VacationPhotosClip/Preview Content\"";
 				DEVELOPMENT_TEAM = RA5M8S58U3;
@@ -756,7 +756,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.1.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				OTHER_LDFLAGS = (
@@ -790,7 +790,7 @@
 				CODE_SIGN_ENTITLEMENTS = VacationPhotosClip/VacationPhotosClip.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_ASSET_PATHS = "\"VacationPhotosClip/Preview Content\"";
 				DEVELOPMENT_TEAM = RA5M8S58U3;
@@ -818,7 +818,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.1.0;
 				MTL_FAST_MATH = YES;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
