@@ -553,6 +553,42 @@ git push    # If using remote builds
 
 ---
 
+### Error 6: App Clip Too Large (Over 10MB)
+
+```
+ITMS-90865: App Clip size exceeds limit - The App Clip 'YourAppClip' is 42 MB,
+but the limit is 10 MB for the thinned variant.
+```
+
+**Cause:** Your Podfile is including React Native dependencies for the App Clip target.
+
+**Why this happens:** If your Podfile has the App Clip target configured like the main app (with `use_expo_modules!`, `use_react_native!`, etc.), CocoaPods installs all React Native dependencies, making the App Clip 40MB+.
+
+**Fix:** Make your App Clip pure SwiftUI with NO pods:
+
+```ruby
+# In ios/Podfile
+
+# Main app target with all React Native dependencies
+target 'VacationPhotos' do
+  use_expo_modules!
+  # ... all the React Native config
+end
+
+# App Clip target - Pure SwiftUI, no React Native dependencies
+# This keeps the App Clip under the 10MB size limit
+target 'VacationPhotosClip' do
+  # No pods needed - App Clip is pure SwiftUI
+  # It only shows a landing page and links to the App Store
+end
+```
+
+**Result:** App Clip goes from ~42MB to ~2-3MB.
+
+**Important:** This means your App Clip cannot use React Native. You must write it in pure SwiftUI or UIKit. For most use cases (showing a preview and prompting to download the full app), SwiftUI is sufficient and keeps the size well under 10MB.
+
+---
+
 ## 8. Step 6: Testing Your App Clip
 
 **Critical Limitation:** You cannot fully test App Clips with development builds.
@@ -587,18 +623,31 @@ This is the only way to test the real App Clip experience:
    eas submit --platform ios --latest
    ```
 
-3. **Configure App Clip Experience in App Store Connect:**
-   - Go to your app → App Clip section
-   - Click "Get Started" or "Add App Clip Experience"
-   - Choose "Advanced App Clip Experience"
-   - Enter URL prefix: `https://yourdomain.com/share/`
-   - Upload header image (1800×1200 recommended)
-   - Save and submit for review (or use TestFlight)
+3. **Configure App Clip Invocations in App Store Connect:**
+   - Go to your app → TestFlight tab
+   - Click on the build number (e.g., "1.1.0 (9)")
+   - Scroll to **App Clip Invocations** section
+   - Click the **+** button to add an invocation
+   - Enter:
+     - **Title:** A descriptive name (e.g., "Test Vacation")
+     - **URL:** Your App Clip URL (e.g., `https://appclip.apple.com/id?p=com.yourcompany.yourapp.Clip&token=test123`)
+   - Click **Save**
 
-4. **Test via TestFlight:**
-   - QR codes will trigger App Clip cards
-   - Links in Messages will show previews
-   - Safari will show Smart App Banners
+4. **Test on your iPhone via TestFlight app:**
+
+   **Important:** URL-based invocation (clicking links) does NOT work until your app is published to the App Store. Instead:
+
+   - Open the **TestFlight app** on your iPhone
+   - Tap on your app (e.g., "Vacation Photos")
+   - You'll see the App Clip invocations you configured
+   - Tap on an invocation to launch and test the App Clip
+
+   **What won't work in TestFlight:**
+   - Clicking App Clip URLs gives "not available in your country or region"
+   - QR codes won't trigger App Clip cards
+   - Links in Messages won't show App Clip previews
+
+   These features only work after the app is published to the App Store.
 
 #### Option B: Direct Xcode Installation
 
