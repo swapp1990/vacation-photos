@@ -30,7 +30,7 @@ function withAssociatedDomains(config) {
 }
 
 /**
- * Create App Clip source files and resources
+ * Create/update App Clip entitlements (SwiftUI App Clip - no source files needed)
  */
 function withAppClipFiles(config) {
   return withDangerousMod(config, [
@@ -44,12 +44,12 @@ function withAppClipFiles(config) {
       const version = config.version || '1.0.0';
       const buildNumber = config.ios?.buildNumber || '1';
 
-      // Create App Clip directory
+      // Create App Clip directory if it doesn't exist
       if (!fs.existsSync(appClipPath)) {
         fs.mkdirSync(appClipPath, { recursive: true });
       }
 
-      // Create App Clip entitlements
+      // Create/update App Clip entitlements
       const entitlementsContent = `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -73,153 +73,26 @@ function withAppClipFiles(config) {
         path.join(appClipPath, `${APP_CLIP_TARGET_NAME}.entitlements`),
         entitlementsContent
       );
-      console.log('[withAppClip] Created App Clip entitlements');
+      console.log('[withAppClip] Updated App Clip entitlements');
 
-      // Create App Clip Info.plist
-      const infoPlistContent = `<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>CFBundleDevelopmentRegion</key>
-    <string>$(DEVELOPMENT_LANGUAGE)</string>
-    <key>CFBundleDisplayName</key>
-    <string>Vacation Photos</string>
-    <key>CFBundleExecutable</key>
-    <string>$(EXECUTABLE_NAME)</string>
-    <key>CFBundleIdentifier</key>
-    <string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
-    <key>CFBundleInfoDictionaryVersion</key>
-    <string>6.0</string>
-    <key>CFBundleName</key>
-    <string>$(PRODUCT_NAME)</string>
-    <key>CFBundlePackageType</key>
-    <string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
-    <key>CFBundleShortVersionString</key>
-    <string>${version}</string>
-    <key>CFBundleVersion</key>
-    <string>${buildNumber}</string>
-    <key>LSRequiresIPhoneOS</key>
-    <true/>
-    <key>NSAppClip</key>
-    <dict>
-        <key>NSAppClipRequestEphemeralUserNotification</key>
-        <false/>
-        <key>NSAppClipRequestLocationConfirmation</key>
-        <false/>
-    </dict>
-    <key>UIApplicationSceneManifest</key>
-    <dict>
-        <key>UIApplicationSupportsMultipleScenes</key>
-        <false/>
-        <key>UISceneConfigurations</key>
-        <dict/>
-    </dict>
-    <key>UILaunchStoryboardName</key>
-    <string>SplashScreen</string>
-    <key>UIRequiredDeviceCapabilities</key>
-    <array>
-        <string>armv7</string>
-    </array>
-    <key>UISupportedInterfaceOrientations</key>
-    <array>
-        <string>UIInterfaceOrientationPortrait</string>
-    </array>
-    <key>NSContactsUsageDescription</key>
-    <string>This app needs access to your contacts to share vacation photos with friends and family.</string>
-</dict>
-</plist>`;
-      fs.writeFileSync(
-        path.join(appClipPath, 'Info.plist'),
-        infoPlistContent
-      );
-      console.log(`[withAppClip] Created App Clip Info.plist (version: ${version}, build: ${buildNumber})`);
+      // Update version in Info.plist if it exists (don't overwrite SwiftUI config)
+      const infoPlistPath = path.join(appClipPath, 'Info.plist');
+      if (fs.existsSync(infoPlistPath)) {
+        let infoPlist = fs.readFileSync(infoPlistPath, 'utf8');
+        // Update version strings
+        infoPlist = infoPlist.replace(
+          /(<key>CFBundleShortVersionString<\/key>\s*<string>)[^<]*(<\/string>)/,
+          `$1${version}$2`
+        );
+        infoPlist = infoPlist.replace(
+          /(<key>CFBundleVersion<\/key>\s*<string>)[^<]*(<\/string>)/,
+          `$1${buildNumber}$2`
+        );
+        fs.writeFileSync(infoPlistPath, infoPlist);
+        console.log(`[withAppClip] Updated App Clip Info.plist (version: ${version}, build: ${buildNumber})`);
+      }
 
-      // Create a placeholder AppDelegate for App Clip (React Native based)
-      const appDelegateContent = `#import <Foundation/Foundation.h>
-#import <React/RCTBridgeDelegate.h>
-#import <UIKit/UIKit.h>
-
-@interface AppClipAppDelegate : UIResponder <UIApplicationDelegate, RCTBridgeDelegate>
-@property (nonatomic, strong) UIWindow *window;
-@end
-`;
-      fs.writeFileSync(
-        path.join(appClipPath, 'AppClipAppDelegate.h'),
-        appDelegateContent
-      );
-
-      const appDelegateImplContent = `#import "AppClipAppDelegate.h"
-#import <React/RCTBridge.h>
-#import <React/RCTBundleURLProvider.h>
-#import <React/RCTRootView.h>
-#import <React/RCTLinkingManager.h>
-
-@implementation AppClipAppDelegate
-
-- (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
-{
-  RCTBridge *bridge = [[RCTBridge alloc] initWithDelegate:self launchOptions:launchOptions];
-  RCTRootView *rootView = [[RCTRootView alloc] initWithBridge:bridge
-                                                   moduleName:@"VacationPhotosClip"
-                                            initialProperties:nil];
-  rootView.backgroundColor = [UIColor whiteColor];
-
-  self.window = [[UIWindow alloc] initWithFrame:[UIScreen mainScreen].bounds];
-  UIViewController *rootViewController = [UIViewController new];
-  rootViewController.view = rootView;
-  self.window.rootViewController = rootViewController;
-  [self.window makeKeyAndVisible];
-  return YES;
-}
-
-- (NSURL *)sourceURLForBridge:(RCTBridge *)bridge
-{
-#if DEBUG
-  return [[RCTBundleURLProvider sharedSettings] jsBundleURLForBundleRoot:@"AppClip/index"];
-#else
-  return [[NSBundle mainBundle] URLForResource:@"main" withExtension:@"jsbundle"];
-#endif
-}
-
-- (BOOL)application:(UIApplication *)application
-   openURL:(NSURL *)url
-   options:(NSDictionary<UIApplicationOpenURLOptionsKey,id> *)options
-{
-  return [RCTLinkingManager application:application openURL:url options:options];
-}
-
-- (BOOL)application:(UIApplication *)application
-    continueUserActivity:(nonnull NSUserActivity *)userActivity
-      restorationHandler:(nonnull void (^)(NSArray<id<UIUserActivityRestoring>> * _Nullable))restorationHandler
-{
-  return [RCTLinkingManager application:application
-                   continueUserActivity:userActivity
-                     restorationHandler:restorationHandler];
-}
-
-@end
-`;
-      fs.writeFileSync(
-        path.join(appClipPath, 'AppClipAppDelegate.m'),
-        appDelegateImplContent
-      );
-      console.log('[withAppClip] Created App Clip AppDelegate files');
-
-      // Create main.m for App Clip
-      const mainContent = `#import <UIKit/UIKit.h>
-#import "AppClipAppDelegate.h"
-
-int main(int argc, char * argv[]) {
-  @autoreleasepool {
-    return UIApplicationMain(argc, argv, nil, NSStringFromClass([AppClipAppDelegate class]));
-  }
-}
-`;
-      fs.writeFileSync(
-        path.join(appClipPath, 'main.m'),
-        mainContent
-      );
-      console.log('[withAppClip] Created App Clip main.m');
+      // Note: SwiftUI source files are maintained manually in ios/VacationPhotosClip/
 
       return config;
     },

@@ -7,6 +7,11 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		B8EE3893DCA3BC8940BBFE22 /* VacationPhotosClipApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96C2C33997BCB7713946C40C /* VacationPhotosClipApp.swift */; };
+		D63849C99AA29B253E4BA692 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FB3A220FEC7A62FD67F0BF3 /* ContentView.swift */; };
+		CB18E3E1A78AAD34C5AF1690 /* SharedVacationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0718C3A4C8D477DC16514BB /* SharedVacationView.swift */; };
+		FA1A337A65E5B5D00EA50006 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1855BE131E615DA8493E2F73 /* Models.swift */; };
+		30D0281049DF422C6AF4CB86 /* SharedVacationViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45E33881A626AE9D9FC15BFC /* SharedVacationViewModel.swift */; };
 		121D68FC3AB7D7059384F03E /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = AF330C3B5DADC1B9028C9216 /* main.m */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		B0E7DBC72F1B913200472159 /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B0E7DBC82F1B913200472159 /* Images.xcassets */; };
@@ -96,6 +101,11 @@
 		F11748442D0722820044C1D9 /* VacationPhotos-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "VacationPhotos-Bridging-Header.h"; path = "VacationPhotos/VacationPhotos-Bridging-Header.h"; sourceTree = "<group>"; };
 		F27673D263DE4A49A5B27EF1 /* AppClipAppDelegate.m */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.c.objc; path = AppClipAppDelegate.m; sourceTree = "<group>"; };
 		F763DE2AC74602A492197F5A /* AppClipAppDelegate.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = AppClipAppDelegate.h; sourceTree = "<group>"; };
+		96C2C33997BCB7713946C40C /* VacationPhotosClipApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VacationPhotosClipApp.swift; sourceTree = "<group>"; };
+		5FB3A220FEC7A62FD67F0BF3 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		C0718C3A4C8D477DC16514BB /* SharedVacationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedVacationView.swift; sourceTree = "<group>"; };
+		1855BE131E615DA8493E2F73 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
+		45E33881A626AE9D9FC15BFC /* SharedVacationViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedVacationViewModel.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -205,9 +215,11 @@
 		B0E7DB982F1B913000472158 /* VacationPhotosClip */ = {
 			isa = PBXGroup;
 			children = (
-				F763DE2AC74602A492197F5A /* AppClipAppDelegate.h */,
-				846211894A8777AF92505879 /* AppClipAppDelegate.m */,
-				AF330C3B5DADC1B9028C9216 /* main.m */,
+				96C2C33997BCB7713946C40C /* VacationPhotosClipApp.swift */,
+				5FB3A220FEC7A62FD67F0BF3 /* ContentView.swift */,
+				C0718C3A4C8D477DC16514BB /* SharedVacationView.swift */,
+				1855BE131E615DA8493E2F73 /* Models.swift */,
+				45E33881A626AE9D9FC15BFC /* SharedVacationViewModel.swift */,
 				044EF959E12C3D43B9112E0A /* Info.plist */,
 				550D3C66F68D6FE457E629BF /* VacationPhotosClip.entitlements */,
 				B0E7DBC82F1B913200472159 /* Images.xcassets */,
@@ -270,7 +282,6 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = B0E7DBC42F1B913200472158 /* Build configuration list for PBXNativeTarget "VacationPhotosClip" */;
 			buildPhases = (
-				B0E7DBC92F1B913200472160 /* Sync Version from Main App */,
 				B0E7DB932F1B913000472158 /* Sources */,
 				B0E7DB942F1B913000472158 /* Frameworks */,
 				B0E7DB952F1B913000472158 /* Resources */,
@@ -497,8 +508,11 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				B4C9EC56CA36B3D4B23F982F /* AppClipAppDelegate.m in Sources */,
-				121D68FC3AB7D7059384F03E /* main.m in Sources */,
+				B8EE3893DCA3BC8940BBFE22 /* VacationPhotosClipApp.swift in Sources */,
+				D63849C99AA29B253E4BA692 /* ContentView.swift in Sources */,
+				CB18E3E1A78AAD34C5AF1690 /* SharedVacationView.swift in Sources */,
+				FA1A337A65E5B5D00EA50006 /* Models.swift in Sources */,
+				30D0281049DF422C6AF4CB86 /* SharedVacationViewModel.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -559,11 +573,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				OTHER_LDFLAGS = (
-					"$(inherited)",
-					"-ObjC",
-					"-lc++",
-				);
+				OTHER_LDFLAGS = "$(inherited)";
 				PRODUCT_BUNDLE_IDENTIFIER = com.swapp1990.vacationphotos;
 				PRODUCT_NAME = VacationPhotos;
 				SWIFT_OBJC_BRIDGING_HEADER = "VacationPhotos/VacationPhotos-Bridging-Header.h";
@@ -728,22 +738,15 @@
 				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
 				CODE_SIGN_ENTITLEMENTS = VacationPhotosClip/VacationPhotosClip.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 6;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_ASSET_PATHS = "\"VacationPhotosClip/Preview Content\"";
 				DEVELOPMENT_TEAM = RA5M8S58U3;
 				ENABLE_PREVIEWS = YES;
-				FRAMEWORK_SEARCH_PATHS = (
-					"$(inherited)",
-					"\"$(SRCROOT)/../node_modules/react-native/Libraries\"",
-				);
+				FRAMEWORK_SEARCH_PATHS = "$(inherited)";
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GENERATE_INFOPLIST_FILE = YES;
-				HEADER_SEARCH_PATHS = (
-					"$(inherited)",
-					"\"$(SRCROOT)/../node_modules/react-native/React/**\"",
-					"\"$(SRCROOT)/../node_modules/react-native/Libraries/**\"",
-				);
+				HEADER_SEARCH_PATHS = "$(inherited)";
 				INFOPLIST_FILE = VacationPhotosClip/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = VacationPhotos;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -790,22 +793,15 @@
 				CODE_SIGN_ENTITLEMENTS = VacationPhotosClip/VacationPhotosClip.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 6;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_ASSET_PATHS = "\"VacationPhotosClip/Preview Content\"";
 				DEVELOPMENT_TEAM = RA5M8S58U3;
 				ENABLE_PREVIEWS = YES;
-				FRAMEWORK_SEARCH_PATHS = (
-					"$(inherited)",
-					"\"$(SRCROOT)/../node_modules/react-native/Libraries\"",
-				);
+				FRAMEWORK_SEARCH_PATHS = "$(inherited)";
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GENERATE_INFOPLIST_FILE = YES;
-				HEADER_SEARCH_PATHS = (
-					"$(inherited)",
-					"\"$(SRCROOT)/../node_modules/react-native/React/**\"",
-					"\"$(SRCROOT)/../node_modules/react-native/Libraries/**\"",
-				);
+				HEADER_SEARCH_PATHS = "$(inherited)";
 				INFOPLIST_FILE = VacationPhotosClip/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = VacationPhotos;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -820,11 +816,7 @@
 				);
 				MARKETING_VERSION = 1.1.0;
 				MTL_FAST_MATH = YES;
-				OTHER_LDFLAGS = (
-					"$(inherited)",
-					"-ObjC",
-					"-lc++",
-				);
+				OTHER_LDFLAGS = "$(inherited)";
 				PRODUCT_BUNDLE_IDENTIFIER = com.swapp1990.vacationphotos.Clip;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_COMPILATION_MODE = wholemodule;
