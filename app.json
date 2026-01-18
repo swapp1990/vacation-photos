@@ -17,22 +17,31 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.swapp1990.vacationphotos",
-      "buildNumber": "2",
+      "buildNumber": "4",
       "associatedDomains": [
         "applinks:swapp1990.github.io",
         "appclips:swapp1990.github.io"
       ],
       "entitlements": {
-        "com.apple.developer.icloud-container-identifiers": ["iCloud.com.swapp1990.vacationphotos"],
-        "com.apple.developer.icloud-services": ["CloudKit"],
-        "com.apple.security.application-groups": ["group.com.swapp1990.vacationphotos"]
+        "com.apple.developer.icloud-container-identifiers": [
+          "iCloud.com.swapp1990.vacationphotos"
+        ],
+        "com.apple.developer.icloud-services": [
+          "CloudKit"
+        ],
+        "com.apple.security.application-groups": [
+          "group.com.swapp1990.vacationphotos"
+        ]
       },
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "This app needs access to your photos to display and organize your vacation memories.",
         "NSLocationWhenInUseUsageDescription": "This app needs your location to identify photos taken away from home.",
         "NSContactsUsageDescription": "This app needs access to your contacts to share vacation photos with friends and family.",
         "ITSAppUsesNonExemptEncryption": false,
-        "LSApplicationQueriesSchemes": ["whatsapp", "sms"]
+        "LSApplicationQueriesSchemes": [
+          "whatsapp",
+          "sms"
+        ]
       }
     },
     "android": {

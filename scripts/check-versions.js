@@ -1,17 +1,21 @@
 #!/usr/bin/env node
 /**
- * Pre-build version check script
+ * Pre-build version check and sync script
  *
  * Verifies that App Clip version matches the main app version.
  * Run this before `eas build` to catch version mismatches early.
  *
- * Usage: node scripts/check-versions.js
+ * Usage:
+ *   node scripts/check-versions.js          # Check only
+ *   node scripts/check-versions.js --fix    # Check and fix mismatches
+ *
  */
 
 const fs = require('fs');
 const path = require('path');
 
 const projectRoot = path.join(__dirname, '..');
+const shouldFix = process.argv.includes('--fix');
 
 function readAppJson() {
   const appJsonPath = path.join(projectRoot, 'app.json');
@@ -81,18 +85,72 @@ function main() {
   if (hasError) {
     console.log('❌ VERSION MISMATCH DETECTED!');
     console.log('');
-    console.log('The App Clip version does not match the main app.');
-    console.log('This will cause the build to fail.');
-    console.log('');
-    console.log('To fix, either:');
-    console.log('1. Run `npx expo prebuild --clean` to regenerate native code');
-    console.log('2. Or manually update CURRENT_PROJECT_VERSION in project.pbxproj');
-    console.log('');
-    process.exit(1);
+
+    if (shouldFix) {
+      console.log('🔧 Fixing version mismatch...');
+      fixVersionMismatch(mainAppBuildNumber);
+      console.log('✅ Fixed! App Clip version updated to ' + mainAppBuildNumber);
+      console.log('');
+      process.exit(0);
+    } else {
+      console.log('The App Clip version does not match the main app.');
+      console.log('This will cause the build to fail.');
+      console.log('');
+      console.log('To fix, run: node scripts/check-versions.js --fix');
+      console.log('');
+      process.exit(1);
+    }
   } else {
     console.log('✅ All versions match! Ready to build.');
     process.exit(0);
   }
+}
+
+function fixVersionMismatch(targetVersion) {
+  const pbxprojPath = path.join(projectRoot, 'ios/VacationPhotos.xcodeproj/project.pbxproj');
+  let content = fs.readFileSync(pbxprojPath, 'utf8');
+
+  // Find and replace CURRENT_PROJECT_VERSION for App Clip configs
+  // We need to be careful to only update App Clip configs, not main app or test configs
+  const lines = content.split('\n');
+  let inAppClipConfig = false;
+  let braceCount = 0;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    // Track brace depth to know when we exit a config block
+    if (inAppClipConfig) {
+      braceCount += (line.match(/\{/g) || []).length;
+      braceCount -= (line.match(/\}/g) || []).length;
+
+      if (line.includes('CURRENT_PROJECT_VERSION')) {
+        lines[i] = line.replace(/CURRENT_PROJECT_VERSION = \d+/, `CURRENT_PROJECT_VERSION = ${targetVersion}`);
+      }
+
+      if (braceCount <= 0) {
+        inAppClipConfig = false;
+      }
+    }
+
+    // Detect start of App Clip build configuration
+    if (line.includes('com.swapp1990.vacationphotos.Clip')) {
+      inAppClipConfig = true;
+      braceCount = 1;
+      // Look backwards to find and fix CURRENT_PROJECT_VERSION in this block
+      for (let j = i - 1; j >= Math.max(0, i - 50); j--) {
+        if (lines[j].includes('CURRENT_PROJECT_VERSION')) {
+          lines[j] = lines[j].replace(/CURRENT_PROJECT_VERSION = \d+/, `CURRENT_PROJECT_VERSION = ${targetVersion}`);
+          break;
+        }
+        if (lines[j].includes('buildSettings = {')) {
+          break;
+        }
+      }
+    }
+  }
+
+  fs.writeFileSync(pbxprojPath, lines.join('\n'));
 }
 
 main();
