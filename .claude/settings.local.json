@@ -64,7 +64,11 @@
       "WebFetch(domain:docs.expo.dev)",
       "Bash(/usr/libexec/PlistBuddy:*)",
       "Bash(node scripts/check-versions.js:*)",
-      "Bash(node scripts/migrate-appclip-to-swiftui.js:*)"
+      "Bash(node scripts/migrate-appclip-to-swiftui.js:*)",
+      "Bash(xed:*)",
+      "Bash(pod --version:*)",
+      "Bash(brew reinstall:*)",
+      "Bash(plutil:*)"
     ]
   }
 }
