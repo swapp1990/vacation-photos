@@ -68,7 +68,8 @@
       "Bash(xed:*)",
       "Bash(pod --version:*)",
       "Bash(brew reinstall:*)",
-      "Bash(plutil:*)"
+      "Bash(plutil:*)",
+      "Bash(git rm:*)"
     ]
   }
 }
