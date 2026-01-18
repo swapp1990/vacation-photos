@@ -88,8 +88,10 @@ const APP_CLIP_BUNDLE_ID = 'com.swapp1990.vacationphotos.Clip';
 
 // Generate a share link using Apple's default App Clip link format
 // This requires iOS 16.4+ for the App Clip card, iOS 17+ for WhatsApp invocation
-export function generateShareLink(shareId) {
-  return `https://appclip.apple.com/id?p=${APP_CLIP_BUNDLE_ID}&token=${shareId}`;
+// Includes location name so App Clip can display it without CloudKit access
+export function generateShareLink(shareId, locationName = '') {
+  const encodedLocation = encodeURIComponent(locationName || 'Vacation');
+  return `https://appclip.apple.com/id?p=${APP_CLIP_BUNDLE_ID}&token=${shareId}&location=${encodedLocation}`;
 }
 
 // Generate legacy custom scheme link (for backward compatibility)

@@ -175,7 +175,7 @@ export async function shareVacationCluster(cluster, onProgress) {
     return {
       success: true,
       shareId: existingShareId,
-      shareLink: generateShareLink(existingShareId),
+      shareLink: generateShareLink(existingShareId, cluster.locationName),
       photosUploaded: entry?.uploadedCount || Math.min(totalPhotos, MAX_PHOTOS),
       alreadyUploaded: true,
     };
@@ -235,8 +235,8 @@ export async function shareVacationCluster(cluster, onProgress) {
     // Save the upload mapping for future reuse
     await saveUploadedVacation(clusterKey, shareId, successCount, totalPhotos);
 
-    // Generate share link
-    const shareLink = generateShareLink(shareId);
+    // Generate share link with location name
+    const shareLink = generateShareLink(shareId, cluster.locationName);
 
     return {
       success: true,

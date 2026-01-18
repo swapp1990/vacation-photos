@@ -7,28 +7,25 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		B8EE3893DCA3BC8940BBFE22 /* VacationPhotosClipApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96C2C33997BCB7713946C40C /* VacationPhotosClipApp.swift */; };
-		D63849C99AA29B253E4BA692 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FB3A220FEC7A62FD67F0BF3 /* ContentView.swift */; };
-		CB18E3E1A78AAD34C5AF1690 /* SharedVacationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0718C3A4C8D477DC16514BB /* SharedVacationView.swift */; };
-		FA1A337A65E5B5D00EA50006 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1855BE131E615DA8493E2F73 /* Models.swift */; };
-		30D0281049DF422C6AF4CB86 /* SharedVacationViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45E33881A626AE9D9FC15BFC /* SharedVacationViewModel.swift */; };
-		121D68FC3AB7D7059384F03E /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = AF330C3B5DADC1B9028C9216 /* main.m */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
-		B0E7DBC72F1B913200472159 /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B0E7DBC82F1B913200472159 /* Images.xcassets */; };
 		20B397D03E7446D6801B995D /* AppGroupStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 044FB459540F4054A699C131 /* AppGroupStorage.swift */; };
+		30D0281049DF422C6AF4CB86 /* SharedVacationViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45E33881A626AE9D9FC15BFC /* SharedVacationViewModel.swift */; };
 		34CD2B866475A80474160699 /* VacationPhotosClip.app in Embed App Clips */ = {isa = PBXBuildFile; fileRef = B0E7DB972F1B913000472158 /* VacationPhotosClip.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
 		4E183A5B5D1740BD816146D4 /* CloudKitBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = 4B6C52C1059047E1B5350464 /* CloudKitBridge.m */; };
 		63AF5DDCAD3745CA8E4A0AB9 /* AppGroupStorageBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = 7E50C70F328047C792619E09 /* AppGroupStorageBridge.m */; };
-		B0E7DBA12F1B913100472158 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B0E7DBA02F1B913100472158 /* Preview Assets.xcassets */; };
 		B0E7DBAD2F1B913100472158 /* VacationPhotosClipTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0E7DBAC2F1B913100472158 /* VacationPhotosClipTests.swift */; };
 		B0E7DBB72F1B913100472158 /* VacationPhotosClipUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0E7DBB62F1B913100472158 /* VacationPhotosClipUITests.swift */; };
 		B0E7DBB92F1B913100472158 /* VacationPhotosClipUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0E7DBB82F1B913100472158 /* VacationPhotosClipUITestsLaunchTests.swift */; };
 		B0E7DBBC2F1B913100472158 /* VacationPhotosClip.app in Embed App Clips */ = {isa = PBXBuildFile; fileRef = B0E7DB972F1B913000472158 /* VacationPhotosClip.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		B4C9EC56CA36B3D4B23F982F /* AppClipAppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 846211894A8777AF92505879 /* AppClipAppDelegate.m */; };
+		B0E7DBC72F1B913200472159 /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B0E7DBC82F1B913200472159 /* Images.xcassets */; };
+		B8EE3893DCA3BC8940BBFE22 /* VacationPhotosClipApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96C2C33997BCB7713946C40C /* VacationPhotosClipApp.swift */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
 		BB96D7DDDF8A4673B67C86BB /* CloudKitManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A028E05C823490C9539F32F /* CloudKitManager.swift */; };
+		CB18E3E1A78AAD34C5AF1690 /* SharedVacationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0718C3A4C8D477DC16514BB /* SharedVacationView.swift */; };
+		D63849C99AA29B253E4BA692 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FB3A220FEC7A62FD67F0BF3 /* ContentView.swift */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
+		FA1A337A65E5B5D00EA50006 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1855BE131E615DA8493E2F73 /* Models.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -76,36 +73,32 @@
 		13B07F961A680F5B00A75B9A /* VacationPhotos.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VacationPhotos.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = VacationPhotos/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = VacationPhotos/Info.plist; sourceTree = "<group>"; };
+		1855BE131E615DA8493E2F73 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
 		1A028E05C823490C9539F32F /* CloudKitManager.swift */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.swift; name = CloudKitManager.swift; path = VacationPhotos/CloudKitManager.swift; sourceTree = "<group>"; };
 		4454B893725F48C0ADBD753B /* VacationPhotosClip.entitlements */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; path = VacationPhotosClip.entitlements; sourceTree = "<group>"; };
+		45E33881A626AE9D9FC15BFC /* SharedVacationViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedVacationViewModel.swift; sourceTree = "<group>"; };
 		4B6C52C1059047E1B5350464 /* CloudKitBridge.m */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.c.objc; name = CloudKitBridge.m; path = VacationPhotos/CloudKitBridge.m; sourceTree = "<group>"; };
 		550D3C66F68D6FE457E629BF /* VacationPhotosClip.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = VacationPhotosClip.entitlements; sourceTree = "<group>"; };
+		5FB3A220FEC7A62FD67F0BF3 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		7E50C70F328047C792619E09 /* AppGroupStorageBridge.m */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.c.objc; name = AppGroupStorageBridge.m; path = VacationPhotos/AppGroupStorageBridge.m; sourceTree = "<group>"; };
-		846211894A8777AF92505879 /* AppClipAppDelegate.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = AppClipAppDelegate.m; sourceTree = "<group>"; };
+		96C2C33997BCB7713946C40C /* VacationPhotosClipApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VacationPhotosClipApp.swift; sourceTree = "<group>"; };
 		A1CA5A535E664014B419B00E /* Info.plist */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = VacationPhotos/SplashScreen.storyboard; sourceTree = "<group>"; };
-		AF330C3B5DADC1B9028C9216 /* main.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
 		B0E7DB972F1B913000472158 /* VacationPhotosClip.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VacationPhotosClip.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		B0E7DBA02F1B913100472158 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
-		B0E7DBC82F1B913200472159 /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Images.xcassets; sourceTree = "<group>"; };
 		B0E7DBA82F1B913100472158 /* VacationPhotosClipTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = VacationPhotosClipTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		B0E7DBAC2F1B913100472158 /* VacationPhotosClipTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VacationPhotosClipTests.swift; sourceTree = "<group>"; };
 		B0E7DBB22F1B913100472158 /* VacationPhotosClipUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = VacationPhotosClipUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		B0E7DBB62F1B913100472158 /* VacationPhotosClipUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VacationPhotosClipUITests.swift; sourceTree = "<group>"; };
 		B0E7DBB82F1B913100472158 /* VacationPhotosClipUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VacationPhotosClipUITestsLaunchTests.swift; sourceTree = "<group>"; };
+		B0E7DBC82F1B913200472159 /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Images.xcassets; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
+		C0718C3A4C8D477DC16514BB /* SharedVacationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedVacationView.swift; sourceTree = "<group>"; };
 		DC550E74250F4D3FA9795C48 /* main.m */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		EF9D7D0C11BA4D8A9FD3CB8D /* AppClipAppDelegate.h */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.c.h; path = AppClipAppDelegate.h; sourceTree = "<group>"; };
 		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = VacationPhotos/AppDelegate.swift; sourceTree = "<group>"; };
 		F11748442D0722820044C1D9 /* VacationPhotos-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "VacationPhotos-Bridging-Header.h"; path = "VacationPhotos/VacationPhotos-Bridging-Header.h"; sourceTree = "<group>"; };
 		F27673D263DE4A49A5B27EF1 /* AppClipAppDelegate.m */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.c.objc; path = AppClipAppDelegate.m; sourceTree = "<group>"; };
-		F763DE2AC74602A492197F5A /* AppClipAppDelegate.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = AppClipAppDelegate.h; sourceTree = "<group>"; };
-		96C2C33997BCB7713946C40C /* VacationPhotosClipApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VacationPhotosClipApp.swift; sourceTree = "<group>"; };
-		5FB3A220FEC7A62FD67F0BF3 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
-		C0718C3A4C8D477DC16514BB /* SharedVacationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedVacationView.swift; sourceTree = "<group>"; };
-		1855BE131E615DA8493E2F73 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
-		45E33881A626AE9D9FC15BFC /* SharedVacationViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedVacationViewModel.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -474,21 +467,6 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-VacationPhotos/Pods-VacationPhotos-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
-		B0E7DBC92F1B913200472160 /* Sync Version from Main App */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-				"$(SRCROOT)/VacationPhotos/Info.plist",
-			);
-			name = "Sync Version from Main App";
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "# Sync App Clip version with main app\nMAIN_PLIST=\"${SRCROOT}/VacationPhotos/Info.plist\"\nCLIP_PLIST=\"${SRCROOT}/VacationPhotosClip/Info.plist\"\n\nif [ -f \"$MAIN_PLIST\" ] && [ -f \"$CLIP_PLIST\" ]; then\n  MAIN_VERSION=$(/usr/libexec/PlistBuddy -c \"Print CFBundleVersion\" \"$MAIN_PLIST\")\n  MAIN_SHORT_VERSION=$(/usr/libexec/PlistBuddy -c \"Print CFBundleShortVersionString\" \"$MAIN_PLIST\")\n  \n  echo \"Syncing App Clip version to: $MAIN_VERSION ($MAIN_SHORT_VERSION)\"\n  \n  /usr/libexec/PlistBuddy -c \"Set :CFBundleVersion $MAIN_VERSION\" \"$CLIP_PLIST\"\n  /usr/libexec/PlistBuddy -c \"Set :CFBundleShortVersionString $MAIN_SHORT_VERSION\" \"$CLIP_PLIST\"\nfi\n";
-		};
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -737,6 +715,7 @@
 				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
 				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
 				CODE_SIGN_ENTITLEMENTS = VacationPhotosClip/VacationPhotosClip.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 6;
 				DEBUG_INFORMATION_FORMAT = dwarf;
@@ -769,6 +748,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.swapp1990.vacationphotos.Clip;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
@@ -791,6 +771,7 @@
 				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
 				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
 				CODE_SIGN_ENTITLEMENTS = VacationPhotosClip/VacationPhotosClip.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 6;
@@ -819,6 +800,7 @@
 				OTHER_LDFLAGS = "$(inherited)";
 				PRODUCT_BUNDLE_IDENTIFIER = com.swapp1990.vacationphotos.Clip;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";

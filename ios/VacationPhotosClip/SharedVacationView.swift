@@ -2,15 +2,20 @@ import SwiftUI
 
 struct SharedVacationView: View {
     @ObservedObject var viewModel: SharedVacationViewModel
-    @State private var selectedPhotoIndex: Int = 0
 
     var body: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
+            // Gradient background
+            LinearGradient(
+                gradient: Gradient(colors: [Color.blue.opacity(0.8), Color.purple.opacity(0.8)]),
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
 
             switch viewModel.state {
             case .loading:
-                LoadingView(message: "Loading vacation photos...")
+                LoadingView(message: "Loading...")
 
             case .error(let message):
                 ErrorView(message: message) {
@@ -20,121 +25,111 @@ struct SharedVacationView: View {
                 }
 
             case .loaded:
+                landingView
+            }
+        }
+    }
+
+    private var landingView: some View {
+        VStack(spacing: 24) {
+            Spacer()
+
+            // App icon placeholder
+            ZStack {
+                RoundedRectangle(cornerRadius: 24)
+                    .fill(Color.white.opacity(0.2))
+                    .frame(width: 100, height: 100)
+
+                Image(systemName: "photo.on.rectangle.angled")
+                    .font(.system(size: 44))
+                    .foregroundColor(.white)
+            }
+
+            // Title - show location name prominently
+            VStack(spacing: 8) {
                 if let vacation = viewModel.vacation {
-                    VStack(spacing: 0) {
-                        // Header
-                        headerView(vacation: vacation)
+                    Text(vacation.locationName)
+                        .font(.largeTitle)
+                        .fontWeight(.bold)
+                        .foregroundColor(.white)
+                        .multilineTextAlignment(.center)
+                } else {
+                    Text("Vacation Photos")
+                        .font(.largeTitle)
+                        .fontWeight(.bold)
+                        .foregroundColor(.white)
+                }
 
-                        // Photo Gallery
-                        if viewModel.photos.isEmpty {
-                            emptyPhotosView
-                        } else {
-                            photoGalleryView
-                        }
+                Text("Vacation Photos")
+                    .font(.subheadline)
+                    .foregroundColor(.white.opacity(0.7))
+            }
 
-                        // Get Full App Button
-                        getFullAppButton
+            // Description
+            VStack(spacing: 12) {
+                Text("Someone shared photos with you!")
+                    .font(.headline)
+                    .foregroundColor(.white.opacity(0.9))
+
+                Text("Download the app to view and save all the photos.")
+                    .font(.subheadline)
+                    .foregroundColor(.white.opacity(0.7))
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 32)
+            }
+
+            Spacer()
+
+            // Features list
+            VStack(alignment: .leading, spacing: 12) {
+                featureRow(icon: "photo.stack", text: "View all shared photos")
+                featureRow(icon: "square.and.arrow.down", text: "Save photos to your library")
+                featureRow(icon: "map", text: "See vacation locations on a map")
+                featureRow(icon: "person.2", text: "Share your own vacations")
+            }
+            .padding(.horizontal, 32)
+
+            Spacer()
+
+            // Download button
+            Button(action: openAppStore) {
+                HStack(spacing: 12) {
+                    Image(systemName: "arrow.down.app.fill")
+                        .font(.title2)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Download")
+                            .font(.headline)
+                        Text("Vacation Photos")
+                            .font(.caption)
+                            .opacity(0.8)
                     }
                 }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 16)
+                .background(Color.white)
+                .foregroundColor(.blue)
+                .cornerRadius(16)
             }
+            .padding(.horizontal, 24)
+            .padding(.bottom, 32)
         }
     }
 
-    private func headerView(vacation: SharedVacation) -> some View {
-        VStack(spacing: 8) {
-            Text(vacation.locationName)
-                .font(.title2)
-                .fontWeight(.bold)
+    private func featureRow(icon: String, text: String) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.body)
+                .frame(width: 24)
                 .foregroundColor(.white)
-
-            Text("\(vacation.sharedBy) shared \(vacation.photoCount) photos")
+            Text(text)
                 .font(.subheadline)
-                .foregroundColor(.white.opacity(0.8))
-
-            Text(vacation.dateRange)
-                .font(.caption)
-                .foregroundColor(.white.opacity(0.6))
+                .foregroundColor(.white.opacity(0.9))
+            Spacer()
         }
-        .padding()
-        .frame(maxWidth: .infinity)
-        .background(Color.black.opacity(0.3))
-    }
-
-    private var emptyPhotosView: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "photo.on.rectangle.angled")
-                .font(.system(size: 60))
-                .foregroundColor(.white.opacity(0.5))
-            Text("Loading photos...")
-                .foregroundColor(.white.opacity(0.7))
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    private var photoGalleryView: some View {
-        TabView(selection: $selectedPhotoIndex) {
-            ForEach(Array(viewModel.photos.enumerated()), id: \.offset) { index, photo in
-                PhotoView(photo: photo)
-                    .tag(index)
-            }
-        }
-        .tabViewStyle(PageTabViewStyle(indexDisplayMode: .automatic))
-    }
-
-    private var getFullAppButton: some View {
-        Button(action: openAppStore) {
-            HStack {
-                Image(systemName: "arrow.down.app.fill")
-                Text("Get Full App")
-                    .fontWeight(.semibold)
-            }
-            .frame(maxWidth: .infinity)
-            .padding()
-            .background(Color.blue)
-            .foregroundColor(.white)
-            .cornerRadius(12)
-        }
-        .padding()
-        .background(Color.black)
     }
 
     private func openAppStore() {
-        if let url = URL(string: "https://apps.apple.com/app/id6756803475") {
-            UIApplication.shared.open(url)
-        }
-    }
-}
-
-struct PhotoView: View {
-    let photo: SharedPhoto
-    @State private var image: UIImage?
-
-    var body: some View {
-        Group {
-            if let image = image {
-                Image(uiImage: image)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-            } else {
-                ProgressView()
-                    .scaleEffect(1.5)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            }
-        }
-        .onAppear {
-            loadImage()
-        }
-    }
-
-    private func loadImage() {
-        guard let path = photo.localPath else { return }
-        DispatchQueue.global(qos: .userInitiated).async {
-            if let uiImage = UIImage(contentsOfFile: path) {
-                DispatchQueue.main.async {
-                    self.image = uiImage
-                }
-            }
-        }
+        UIApplication.shared.open(viewModel.appStoreURL)
     }
 }
 
@@ -170,6 +165,5 @@ struct ErrorView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color.black)
     }
 }
