@@ -8,6 +8,25 @@
 - **DO NOT** run `pod install` locally - not needed
 - **DO NOT** suggest Xcode upgrades for building - use EAS Build instead
 
+### Version Management (App Clip)
+The app has an App Clip target that must have matching version numbers. Before building:
+
+```bash
+# Check if versions are aligned
+node scripts/check-versions.js
+
+# Fix mismatches automatically
+node scripts/check-versions.js --fix
+```
+
+**When bumping versions:**
+1. Update `buildNumber` in `app.json`
+2. Run `node scripts/check-versions.js --fix` to sync App Clip
+3. Commit changes
+4. Run `eas build --platform ios --auto-submit`
+
+**DO NOT** rely on EAS auto-increment - it's disabled because it causes App Clip version mismatches.
+
 ## iOS Development Best Practices
 
 ### Safe Area Handling (CRITICAL)
