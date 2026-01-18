@@ -124,6 +124,8 @@ function withAppClipFiles(config) {
     <array>
         <string>UIInterfaceOrientationPortrait</string>
     </array>
+    <key>NSContactsUsageDescription</key>
+    <string>This app needs access to your contacts to share vacation photos with friends and family.</string>
 </dict>
 </plist>`;
       fs.writeFileSync(
