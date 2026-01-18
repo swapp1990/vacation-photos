@@ -27,3 +27,12 @@ struct SharedPhoto {
     let height: Int
     let localPath: String?
 }
+
+struct ThumbnailPhoto: Identifiable {
+    let orderIndex: Int
+    let url: URL
+    let width: Int
+    let height: Int
+
+    var id: Int { orderIndex }
+}

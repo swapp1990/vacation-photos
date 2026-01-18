@@ -10,7 +10,7 @@ enum LoadingState {
 @MainActor
 class SharedVacationViewModel: ObservableObject {
     @Published var vacation: SharedVacation?
-    @Published var photos: [SharedPhoto] = []
+    @Published var thumbnails: [ThumbnailPhoto] = []
     @Published var state: LoadingState = .loading
 
     // App Store URL for the full app
@@ -19,25 +19,66 @@ class SharedVacationViewModel: ObservableObject {
     func loadVacation(shareId: String, locationName: String? = nil) {
         state = .loading
         vacation = nil
-        photos = []
+        thumbnails = []
 
-        // Since we can't use CloudKit in the App Clip due to provisioning restrictions,
-        // we show a preview and encourage users to download the full app
         Task {
-            // Simulate a brief loading time
-            try? await Task.sleep(nanoseconds: 500_000_000)
+            do {
+                // Try to fetch from CloudKit public database via REST API
+                async let vacationData = CloudKitWebService.fetchSharedVacation(shareId: shareId)
+                async let photosData = CloudKitWebService.fetchPreviewPhotos(shareId: shareId, limit: 3)
 
-            // Create vacation with location from URL (or fallback)
-            self.vacation = SharedVacation(
-                shareId: shareId,
-                locationName: locationName ?? "Shared Vacation",
-                startDate: Date(),
-                endDate: Date(),
-                photoCount: 0,
-                sharedBy: "A friend"
-            )
+                let (fetchedVacation, fetchedPhotos) = try await (vacationData, photosData)
 
-            self.state = .loaded
+                if let vacationInfo = fetchedVacation {
+                    // Got data from CloudKit
+                    self.vacation = SharedVacation(
+                        shareId: shareId,
+                        locationName: vacationInfo.locationName,
+                        startDate: Date(),
+                        endDate: Date(),
+                        photoCount: vacationInfo.photoCount,
+                        sharedBy: vacationInfo.sharedBy
+                    )
+
+                    self.thumbnails = fetchedPhotos.compactMap { photo in
+                        guard let url = photo.url else { return nil }
+                        return ThumbnailPhoto(
+                            orderIndex: photo.orderIndex,
+                            url: url,
+                            width: photo.width,
+                            height: photo.height
+                        )
+                    }
+                } else {
+                    // Fallback: use location from URL parameter
+                    self.vacation = SharedVacation(
+                        shareId: shareId,
+                        locationName: locationName ?? "Shared Vacation",
+                        startDate: Date(),
+                        endDate: Date(),
+                        photoCount: 0,
+                        sharedBy: "A friend"
+                    )
+                }
+
+                self.state = .loaded
+
+            } catch {
+                print("CloudKit fetch error: \(error)")
+
+                // Fallback: show landing page with URL-provided location
+                self.vacation = SharedVacation(
+                    shareId: shareId,
+                    locationName: locationName ?? "Shared Vacation",
+                    startDate: Date(),
+                    endDate: Date(),
+                    photoCount: 0,
+                    sharedBy: "A friend"
+                )
+                self.state = .loaded
+            }
         }
     }
 }
+
+// Models are defined in Models.swift
