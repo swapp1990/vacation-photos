@@ -83,14 +83,13 @@ export async function fetchPreviewPhotos(shareId) {
   }));
 }
 
-// Domain for Universal Links (used by App Clip)
-// Using GitHub Pages: https://swapp1990.github.io/share/{shareId}
-const UNIVERSAL_LINK_DOMAIN = 'swapp1990.github.io';
+// App Clip Bundle ID for default App Clip links
+const APP_CLIP_BUNDLE_ID = 'com.swapp1990.vacationphotos.Clip';
 
-// Generate a share link using Universal Links for App Clip support
+// Generate a share link using Apple's default App Clip link format
+// This requires iOS 16.4+ for the App Clip card, iOS 17+ for WhatsApp invocation
 export function generateShareLink(shareId) {
-  // Use Universal Link format for App Clip compatibility
-  return `https://${UNIVERSAL_LINK_DOMAIN}/share/${shareId}`;
+  return `https://appclip.apple.com/id?p=${APP_CLIP_BUNDLE_ID}&token=${shareId}`;
 }
 
 // Generate legacy custom scheme link (for backward compatibility)
@@ -102,7 +101,14 @@ export function generateLegacyShareLink(shareId) {
 export function parseShareLink(url) {
   if (!url) return null;
 
+  // Handle default App Clip link: https://appclip.apple.com/id?p=...&token={shareId}
+  const appClipMatch = url.match(/appclip\.apple\.com.*[?&]token=([a-zA-Z0-9-]+)/);
+  if (appClipMatch) {
+    return appClipMatch[1];
+  }
+
   // Handle GitHub Pages Universal Link: https://swapp1990.github.io/share/{shareId}
+  // (kept for backward compatibility)
   const githubPagesMatch = url.match(/github\.io\/share\/([a-zA-Z0-9-]+)/);
   if (githubPagesMatch) {
     return githubPagesMatch[1];

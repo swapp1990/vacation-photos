@@ -46,14 +46,22 @@ export default function App() {
 }
 
 /**
- * Parse shareId from Universal Link
- * Expected format: https://swapp1990.github.io/share/{shareId}
+ * Parse shareId from App Clip URL
+ * Supported formats:
+ * - Default App Clip link: https://appclip.apple.com/id?p=...&token={shareId}
+ * - Legacy GitHub Pages: https://swapp1990.github.io/share/{shareId}
  */
 function parseShareId(url) {
   if (!url) return null;
 
   try {
-    // Match GitHub Pages Universal Link format
+    // Match default App Clip link format: https://appclip.apple.com/id?p=...&token={shareId}
+    const appClipMatch = url.match(/appclip\.apple\.com.*[?&]token=([a-zA-Z0-9-]+)/);
+    if (appClipMatch) {
+      return appClipMatch[1];
+    }
+
+    // Match GitHub Pages Universal Link format (backward compatibility)
     const universalMatch = url.match(/github\.io\/share\/([a-zA-Z0-9-]+)/);
     if (universalMatch) {
       return universalMatch[1];

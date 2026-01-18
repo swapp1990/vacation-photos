@@ -40,6 +40,10 @@ function withAppClipFiles(config) {
       const iosPath = path.join(projectRoot, 'ios');
       const appClipPath = path.join(iosPath, APP_CLIP_TARGET_NAME);
 
+      // Get version info from config to match parent app
+      const version = config.version || '1.0.0';
+      const buildNumber = config.ios?.buildNumber || '1';
+
       // Create App Clip directory
       if (!fs.existsSync(appClipPath)) {
         fs.mkdirSync(appClipPath, { recursive: true });
@@ -91,9 +95,9 @@ function withAppClipFiles(config) {
     <key>CFBundlePackageType</key>
     <string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
     <key>CFBundleShortVersionString</key>
-    <string>1.1.0</string>
+    <string>${version}</string>
     <key>CFBundleVersion</key>
-    <string>1</string>
+    <string>${buildNumber}</string>
     <key>LSRequiresIPhoneOS</key>
     <true/>
     <key>NSAppClip</key>
@@ -126,7 +130,7 @@ function withAppClipFiles(config) {
         path.join(appClipPath, 'Info.plist'),
         infoPlistContent
       );
-      console.log('[withAppClip] Created App Clip Info.plist');
+      console.log(`[withAppClip] Created App Clip Info.plist (version: ${version}, build: ${buildNumber})`);
 
       // Create a placeholder AppDelegate for App Clip (React Native based)
       const appDelegateContent = `#import <Foundation/Foundation.h>
@@ -221,6 +225,32 @@ int main(int argc, char * argv[]) {
 }
 
 /**
+ * Sync App Clip version with main app in Xcode project settings
+ */
+function withAppClipVersionSync(config) {
+  return withXcodeProject(config, async (config) => {
+    const xcodeProject = config.modResults;
+    const buildNumber = config.ios?.buildNumber || '1';
+    const version = config.version || '1.0.0';
+
+    // Find VacationPhotosClip target and update its build configurations
+    const configurations = xcodeProject.pbxXCBuildConfigurationSection();
+
+    for (const key in configurations) {
+      const buildConfig = configurations[key];
+      if (buildConfig.buildSettings?.PRODUCT_BUNDLE_IDENTIFIER === 'com.swapp1990.vacationphotos.Clip') {
+        // Update version settings to match main app
+        buildConfig.buildSettings.CURRENT_PROJECT_VERSION = buildNumber;
+        buildConfig.buildSettings.MARKETING_VERSION = version;
+        console.log(`[withAppClip] Synced App Clip ${buildConfig.name} config: version=${version}, build=${buildNumber}`);
+      }
+    }
+
+    return config;
+  });
+}
+
+/**
  * Log instructions for manual App Clip target setup
  *
  * Note: The xcode npm package doesn't support 'app_clip' target type.
@@ -302,6 +332,9 @@ function withAppClip(config, props = {}) {
 
   // Step 3: Add App Clip target to Xcode project
   config = withAppClipTarget(config);
+
+  // Step 4: Sync App Clip version with main app (reads from app.json)
+  config = withAppClipVersionSync(config);
 
   return config;
 }
