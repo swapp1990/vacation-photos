@@ -23,8 +23,6 @@ import { checkCloudKitAvailability } from '../services/cloudKitService';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const PREVIEW_PHOTO_SIZE = 80;
 
-const APP_STORE_LINK = 'https://apps.apple.com/app/id6756803475';
-
 // Screen states
 const SCREEN = {
   NAME_INPUT: 'nameInput',
@@ -237,7 +235,7 @@ export default function ShareModal({ visible, onClose, cluster, onShareComplete 
 
     const phoneNumber = selectedContact.phoneNumbers[0].number.replace(/[\s\-\(\)]/g, '');
 
-    const shareMessage = `I'm sharing my ${locationName} vacation with you! 🌴\n\n${dateRange} · ${shareResult.photosUploaded} photos\n\nView in the app:\n${shareResult.shareLink}\n\nDon't have the app? Download it here:\n${APP_STORE_LINK}`;
+    const shareMessage = `${userName} shared ${locationName}! 🌴\n${dateRange} · ${shareResult.photosUploaded} photos\n\n${shareResult.shareLink}`;
 
     const whatsappUrl = `whatsapp://send?phone=${phoneNumber}&text=${encodeURIComponent(shareMessage)}`;
 
