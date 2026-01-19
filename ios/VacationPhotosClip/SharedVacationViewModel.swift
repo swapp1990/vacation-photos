@@ -12,6 +12,7 @@ class SharedVacationViewModel: ObservableObject {
     @Published var vacation: SharedVacation?
     @Published var thumbnails: [ThumbnailPhoto] = []
     @Published var state: LoadingState = .loading
+    @Published var errorMessage: String?  // Compact error for debugging
 
     // App Store URL for the full app
     let appStoreURL = URL(string: "https://apps.apple.com/app/vacation-photos/id6740545027")!
@@ -20,14 +21,20 @@ class SharedVacationViewModel: ObservableObject {
         state = .loading
         vacation = nil
         thumbnails = []
+        errorMessage = nil
 
         Task {
             do {
-                // Try to fetch from CloudKit public database via REST API
-                async let vacationData = CloudKitWebService.fetchSharedVacation(shareId: shareId)
-                async let photosData = CloudKitWebService.fetchPreviewPhotos(shareId: shareId, limit: 3)
+                // First fetch vacation metadata to get photoCount
+                let fetchedVacation = try await CloudKitWebService.fetchSharedVacation(shareId: shareId)
 
-                let (fetchedVacation, fetchedPhotos) = try await (vacationData, photosData)
+                // Then fetch photos using lookup (requires knowing photoCount for predictable record names)
+                let photoCount = fetchedVacation?.photoCount ?? 3
+                let fetchedPhotos = try await CloudKitWebService.fetchPreviewPhotos(
+                    shareId: shareId,
+                    limit: 3,
+                    photoCount: photoCount
+                )
 
                 if let vacationInfo = fetchedVacation {
                     // Got data from CloudKit
@@ -49,6 +56,11 @@ class SharedVacationViewModel: ObservableObject {
                             height: photo.height
                         )
                     }
+
+                    // Debug: show if photos failed to load
+                    if self.thumbnails.isEmpty && vacationInfo.photoCount > 0 {
+                        self.errorMessage = "Photos: 0/\(vacationInfo.photoCount) loaded"
+                    }
                 } else {
                     // Fallback: use location from URL parameter
                     self.vacation = SharedVacation(
@@ -65,6 +77,9 @@ class SharedVacationViewModel: ObservableObject {
 
             } catch {
                 print("CloudKit fetch error: \(error)")
+
+                // Set compact error message for debugging
+                self.errorMessage = "CloudKit: \(error.localizedDescription)"
 
                 // Fallback: show landing page with URL-provided location
                 self.vacation = SharedVacation(

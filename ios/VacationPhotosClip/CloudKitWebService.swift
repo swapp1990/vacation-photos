@@ -89,24 +89,23 @@ struct CloudKitWebService {
 
     // MARK: - Fetch Preview Photos
 
-    static func fetchPreviewPhotos(shareId: String, limit: Int = 3) async throws -> [PhotoData] {
-        let url = URL(string: "\(baseURL)/records/query")!
+    /// Fetches preview photos using lookup by predictable record names.
+    /// Photo records are named "{shareId}_{orderIndex}" (e.g., "abc123_0", "abc123_1")
+    /// This avoids the query endpoint which requires authentication.
+    static func fetchPreviewPhotos(shareId: String, limit: Int = 3, photoCount: Int? = nil) async throws -> [PhotoData] {
+        let url = URL(string: "\(baseURL)/records/lookup")!
+
+        // Determine how many photos to look up
+        let count = min(limit, photoCount ?? limit)
+
+        // Build lookup request with predictable record names
+        var recordsToLookup: [[String: String]] = []
+        for i in 0..<count {
+            recordsToLookup.append(["recordName": "\(shareId)_\(i)"])
+        }
 
         let body: [String: Any] = [
-            "query": [
-                "recordType": "SharedPhoto",
-                "filterBy": [
-                    [
-                        "fieldName": "shareId",
-                        "comparator": "EQUALS",
-                        "fieldValue": ["value": shareId, "type": "STRING"]
-                    ]
-                ],
-                "sortBy": [
-                    ["fieldName": "orderIndex", "ascending": true]
-                ]
-            ],
-            "resultsLimit": limit
+            "records": recordsToLookup
         ]
 
         var request = URLRequest(url: url)
@@ -129,7 +128,7 @@ struct CloudKitWebService {
             throw CloudKitError.httpError(statusCode: httpResponse.statusCode)
         }
 
-        let decoded = try JSONDecoder().decode(QueryResponse.self, from: data)
+        let decoded = try JSONDecoder().decode(LookupResponse.self, from: data)
 
         guard let records = decoded.records else {
             return []

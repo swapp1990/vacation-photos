@@ -2,16 +2,23 @@ import SwiftUI
 
 struct SharedVacationView: View {
     @ObservedObject var viewModel: SharedVacationViewModel
+    @State private var selectedThumbnail: ThumbnailPhoto? = nil
+
+    private let primaryColor = Color(red: 0.39, green: 0.40, blue: 0.95) // #6366F1
 
     var body: some View {
         ZStack {
-            // Gradient background
-            LinearGradient(
-                gradient: Gradient(colors: [Color.blue.opacity(0.8), Color.purple.opacity(0.8)]),
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea()
+            // Blurred background image
+            Image("VacationSplash")
+                .resizable()
+                .aspectRatio(contentMode: .fill)
+                .blur(radius: 8)
+                .scaleEffect(1.1) // Prevent blur edge artifacts
+                .ignoresSafeArea()
+
+            // Dark overlay for better readability
+            Color.black.opacity(0.3)
+                .ignoresSafeArea()
 
             switch viewModel.state {
             case .loading:
@@ -27,200 +34,261 @@ struct SharedVacationView: View {
             case .loaded:
                 landingView
             }
+
+            // Fullscreen image viewer overlay
+            if let thumbnail = selectedThumbnail {
+                imageViewerOverlay(thumbnail: thumbnail)
+            }
         }
     }
 
     private var landingView: some View {
-        ScrollView {
-            VStack(spacing: 20) {
-                Spacer().frame(height: 20)
-
-                // Photo thumbnails (if available)
-                if !viewModel.thumbnails.isEmpty {
-                    thumbnailsSection
-                } else {
-                    // App icon placeholder when no thumbnails
-                    appIconPlaceholder
-                }
-
-                // Title - show location name prominently
-                VStack(spacing: 8) {
-                    if let vacation = viewModel.vacation {
-                        Text(vacation.locationName)
-                            .font(.largeTitle)
-                            .fontWeight(.bold)
-                            .foregroundColor(.white)
-                            .multilineTextAlignment(.center)
-
-                        if vacation.photoCount > 0 {
-                            Text("\(vacation.photoCount) photos")
-                                .font(.subheadline)
-                                .foregroundColor(.white.opacity(0.8))
-                        }
-                    } else {
-                        Text("Vacation Photos")
-                            .font(.largeTitle)
-                            .fontWeight(.bold)
-                            .foregroundColor(.white)
-                    }
-
-                    Text("Vacation Photos")
-                        .font(.caption)
-                        .foregroundColor(.white.opacity(0.6))
-                }
-
-                // Description
-                VStack(spacing: 12) {
-                    if let vacation = viewModel.vacation {
-                        Text("\(vacation.sharedBy) shared photos with you!")
-                            .font(.headline)
-                            .foregroundColor(.white.opacity(0.9))
-                    } else {
-                        Text("Someone shared photos with you!")
-                            .font(.headline)
-                            .foregroundColor(.white.opacity(0.9))
-                    }
-
-                    Text("Download the app to view and save all the photos.")
-                        .font(.subheadline)
-                        .foregroundColor(.white.opacity(0.7))
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 32)
-                }
-
-                // Features list
-                VStack(alignment: .leading, spacing: 12) {
-                    featureRow(icon: "photo.stack", text: "View all shared photos")
-                    featureRow(icon: "square.and.arrow.down", text: "Save photos to your library")
-                    featureRow(icon: "map", text: "See vacation locations on a map")
-                    featureRow(icon: "person.2", text: "Share your own vacations")
-                }
-                .padding(.horizontal, 32)
-                .padding(.vertical, 16)
-
-                Spacer().frame(height: 20)
-
-                // Download button
-                Button(action: openAppStore) {
-                    HStack(spacing: 12) {
-                        Image(systemName: "arrow.down.app.fill")
-                            .font(.title2)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Download")
-                                .font(.headline)
-                            Text("Vacation Photos")
-                                .font(.caption)
-                                .opacity(0.8)
-                        }
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
-                    .background(Color.white)
-                    .foregroundColor(.blue)
-                    .cornerRadius(16)
-                }
-                .padding(.horizontal, 24)
-                .padding(.bottom, 32)
+        VStack(spacing: 0) {
+            // Error banner at top if any
+            if let error = viewModel.errorMessage {
+                errorBanner(message: error)
+                    .padding(.top, 50)
             }
+
+            Spacer()
+
+            // HERO: Large thumbnails - main focus
+            if !viewModel.thumbnails.isEmpty {
+                heroThumbnails
+            }
+
+            Spacer()
+
+            // Compact bottom card
+            bottomCard
         }
     }
 
-    // MARK: - Thumbnails Section
+    // MARK: - Hero Thumbnails (Main Focus)
 
-    private var thumbnailsSection: some View {
-        VStack(spacing: 12) {
-            // Display up to 3 thumbnails in a horizontal row
-            HStack(spacing: 8) {
+    private var heroThumbnails: some View {
+        VStack(spacing: 16) {
+            HStack(spacing: 12) {
                 ForEach(viewModel.thumbnails.prefix(3)) { thumbnail in
-                    AsyncImage(url: thumbnail.url) { phase in
-                        switch phase {
-                        case .empty:
-                            thumbnailPlaceholder
-                        case .success(let image):
-                            image
-                                .resizable()
-                                .aspectRatio(contentMode: .fill)
-                                .frame(width: thumbnailSize, height: thumbnailSize)
-                                .clipShape(RoundedRectangle(cornerRadius: 12))
-                        case .failure:
-                            thumbnailErrorPlaceholder
-                        @unknown default:
-                            thumbnailPlaceholder
+                    Button(action: {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            selectedThumbnail = thumbnail
                         }
+                    }) {
+                        AsyncImage(url: thumbnail.url) { phase in
+                            switch phase {
+                            case .empty:
+                                RoundedRectangle(cornerRadius: 16)
+                                    .fill(Color.white.opacity(0.2))
+                                    .overlay(ProgressView().tint(.white))
+                            case .success(let image):
+                                image
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fill)
+                                    .frame(width: heroThumbnailSize, height: heroThumbnailSize)
+                                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                                    .shadow(color: .black.opacity(0.4), radius: 8, x: 0, y: 4)
+                            case .failure:
+                                RoundedRectangle(cornerRadius: 16)
+                                    .fill(Color.white.opacity(0.2))
+                                    .overlay(
+                                        Image(systemName: "photo")
+                                            .font(.largeTitle)
+                                            .foregroundColor(.white.opacity(0.5))
+                                    )
+                            @unknown default:
+                                EmptyView()
+                            }
+                        }
+                        .frame(width: heroThumbnailSize, height: heroThumbnailSize)
                     }
-                    .frame(width: thumbnailSize, height: thumbnailSize)
                 }
             }
 
-            // "X more photos" indicator
-            if let vacation = viewModel.vacation, vacation.photoCount > 3 {
-                Text("+\(vacation.photoCount - 3) more photos")
-                    .font(.caption)
+            // Tap hint
+            Text("Tap to preview")
+                .font(.system(size: 13))
+                .foregroundColor(.white.opacity(0.7))
+        }
+    }
+
+    private var heroThumbnailSize: CGFloat {
+        let count = min(viewModel.thumbnails.count, 3)
+        let screenWidth = UIScreen.main.bounds.width
+        let totalSpacing: CGFloat = 24 + (CGFloat(count - 1) * 12) + 24 // margins + gaps
+        return (screenWidth - totalSpacing) / CGFloat(count)
+    }
+
+    // MARK: - Compact Bottom Card
+
+    private var bottomCard: some View {
+        VStack(spacing: 12) {
+            // Sharer info - highlighted
+            if let vacation = viewModel.vacation {
+                HStack(spacing: 4) {
+                    Text(vacation.sharedBy)
+                        .font(.system(size: 17, weight: .bold))
+                        .foregroundColor(Color(red: 0.4, green: 0.8, blue: 1.0)) // Highlighted cyan
+                    Text("shared")
+                        .font(.system(size: 15))
+                        .foregroundColor(.white.opacity(0.9))
+                }
+
+                // Location - smaller
+                Text(vacation.locationName)
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundColor(.white.opacity(0.85))
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+
+                // Photo count
+                Text("\(vacation.photoCount) photos")
+                    .font(.system(size: 13))
                     .foregroundColor(.white.opacity(0.7))
             }
+
+            // Compact features - single line each, smaller
+            VStack(alignment: .leading, spacing: 6) {
+                featureRow(emoji: "✨", text: "Find your own vacation photos")
+                featureRow(emoji: "📁", text: "Auto-organized by location")
+                featureRow(emoji: "🔒", text: "Private - stays on your phone")
+            }
+            .padding(.top, 8)
+
+            // Let's Go button
+            Button(action: openAppStore) {
+                Text("Let's Go!")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundColor(primaryColor)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(Color.white)
+                    .cornerRadius(25)
+            }
+            .padding(.top, 8)
         }
-        .padding(.top, 20)
-    }
-
-    private var thumbnailSize: CGFloat {
-        // Calculate size based on number of thumbnails (max 3)
-        let count = min(viewModel.thumbnails.count, 3)
-        let totalWidth: CGFloat = 300
-        let spacing: CGFloat = 8
-        let availableWidth = totalWidth - (CGFloat(count - 1) * spacing)
-        return availableWidth / CGFloat(count)
-    }
-
-    private var thumbnailPlaceholder: some View {
-        RoundedRectangle(cornerRadius: 12)
-            .fill(Color.white.opacity(0.2))
-            .overlay(
-                ProgressView()
-                    .tint(.white)
-            )
-    }
-
-    private var thumbnailErrorPlaceholder: some View {
-        RoundedRectangle(cornerRadius: 12)
-            .fill(Color.white.opacity(0.2))
-            .overlay(
-                Image(systemName: "photo")
-                    .font(.title2)
-                    .foregroundColor(.white.opacity(0.5))
-            )
-    }
-
-    // MARK: - App Icon Placeholder
-
-    private var appIconPlaceholder: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 24)
-                .fill(Color.white.opacity(0.2))
-                .frame(width: 100, height: 100)
-
-            Image(systemName: "photo.on.rectangle.angled")
-                .font(.system(size: 44))
-                .foregroundColor(.white)
-        }
+        .padding(.horizontal, 20)
+        .padding(.top, 16)
+        .padding(.bottom, 24)
+        .background(
+            Color.black.opacity(0.6)
+                .clipShape(RoundedCorner(radius: 24, corners: [.topLeft, .topRight]))
+        )
+        .ignoresSafeArea(edges: .bottom)
     }
 
     // MARK: - Feature Row
 
-    private func featureRow(icon: String, text: String) -> some View {
-        HStack(spacing: 12) {
-            Image(systemName: icon)
-                .font(.body)
-                .frame(width: 24)
-                .foregroundColor(.white)
+    private func featureRow(emoji: String, text: String) -> some View {
+        HStack(spacing: 8) {
+            Text(emoji)
+                .font(.system(size: 14))
             Text(text)
-                .font(.subheadline)
-                .foregroundColor(.white.opacity(0.9))
-            Spacer()
+                .font(.system(size: 13))
+                .foregroundColor(.white.opacity(0.85))
         }
+    }
+
+    // MARK: - Image Viewer Overlay
+
+    private func imageViewerOverlay(thumbnail: ThumbnailPhoto) -> some View {
+        ZStack {
+            Color.black.opacity(0.95)
+                .ignoresSafeArea()
+                .onTapGesture {
+                    withAnimation(.easeOut(duration: 0.2)) {
+                        selectedThumbnail = nil
+                    }
+                }
+
+            VStack {
+                HStack {
+                    Spacer()
+                    Button(action: {
+                        withAnimation(.easeOut(duration: 0.2)) {
+                            selectedThumbnail = nil
+                        }
+                    }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 30))
+                            .foregroundColor(.white.opacity(0.7))
+                    }
+                    .padding(20)
+                }
+
+                Spacer()
+
+                AsyncImage(url: thumbnail.url) { phase in
+                    switch phase {
+                    case .empty:
+                        ProgressView()
+                            .tint(.white)
+                            .scaleEffect(1.5)
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .cornerRadius(12)
+                            .padding(.horizontal, 16)
+                    case .failure:
+                        VStack(spacing: 12) {
+                            Image(systemName: "photo")
+                                .font(.system(size: 48))
+                                .foregroundColor(.white.opacity(0.5))
+                            Text("Failed to load")
+                                .foregroundColor(.white.opacity(0.7))
+                        }
+                    @unknown default:
+                        EmptyView()
+                    }
+                }
+
+                Spacer()
+
+                Text("Get the app to save photos")
+                    .font(.system(size: 14))
+                    .foregroundColor(.white.opacity(0.6))
+                    .padding(.bottom, 40)
+            }
+        }
+        .transition(.opacity)
     }
 
     private func openAppStore() {
         UIApplication.shared.open(viewModel.appStoreURL)
+    }
+
+    // MARK: - Error Banner
+
+    private func errorBanner(message: String) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.caption2)
+            Text(message)
+                .font(.caption2)
+                .lineLimit(2)
+        }
+        .foregroundColor(.white)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .background(Color.red.opacity(0.9))
+        .cornerRadius(6)
+    }
+}
+
+// MARK: - Rounded Corner Helper
+
+struct RoundedCorner: Shape {
+    var radius: CGFloat = .infinity
+    var corners: UIRectCorner = .allCorners
+
+    func path(in rect: CGRect) -> Path {
+        let path = UIBezierPath(
+            roundedRect: rect,
+            byRoundingCorners: corners,
+            cornerRadii: CGSize(width: radius, height: radius)
+        )
+        return Path(path.cgPath)
     }
 }
 
@@ -230,33 +298,47 @@ struct ErrorView: View {
     let message: String
     let retryAction: () -> Void
 
+    private let primaryColor = Color(red: 0.39, green: 0.40, blue: 0.95)
+
     var body: some View {
-        VStack(spacing: 20) {
-            Image(systemName: "exclamationmark.triangle")
-                .font(.system(size: 50))
-                .foregroundColor(.orange)
+        ZStack {
+            Image("VacationSplash")
+                .resizable()
+                .aspectRatio(contentMode: .fill)
+                .blur(radius: 8)
+                .scaleEffect(1.1)
+                .ignoresSafeArea()
 
-            Text("Unable to Load")
-                .font(.title2)
-                .fontWeight(.bold)
-                .foregroundColor(.white)
+            Color.black.opacity(0.4)
+                .ignoresSafeArea()
 
-            Text(message)
-                .font(.body)
-                .foregroundColor(.white.opacity(0.7))
-                .multilineTextAlignment(.center)
-                .padding(.horizontal)
+            VStack(spacing: 16) {
+                Text("⚠️")
+                    .font(.system(size: 44))
 
-            Button(action: retryAction) {
-                Text("Try Again")
-                    .fontWeight(.semibold)
-                    .padding(.horizontal, 30)
-                    .padding(.vertical, 12)
-                    .background(Color.blue)
+                Text("Unable to Load")
+                    .font(.system(size: 18, weight: .bold))
                     .foregroundColor(.white)
-                    .cornerRadius(10)
+
+                Text(message)
+                    .font(.system(size: 14))
+                    .foregroundColor(.white.opacity(0.8))
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 32)
+
+                Button(action: retryAction) {
+                    Text("Try Again")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(primaryColor)
+                        .padding(.horizontal, 28)
+                        .padding(.vertical, 12)
+                        .background(Color.white)
+                        .cornerRadius(20)
+                }
             }
+            .padding(24)
+            .background(Color.black.opacity(0.5))
+            .cornerRadius(20)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }

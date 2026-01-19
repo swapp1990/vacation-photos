@@ -10,6 +10,7 @@
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		20B397D03E7446D6801B995D /* AppGroupStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 044FB459540F4054A699C131 /* AppGroupStorage.swift */; };
 		30D0281049DF422C6AF4CB86 /* SharedVacationViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45E33881A626AE9D9FC15BFC /* SharedVacationViewModel.swift */; };
+		CK9876543210FEDCBA87654321 /* CloudKitWebService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CK1234567890ABCDEF12345678 /* CloudKitWebService.swift */; };
 		34CD2B866475A80474160699 /* VacationPhotosClip.app in Embed App Clips */ = {isa = PBXBuildFile; fileRef = B0E7DB972F1B913000472158 /* VacationPhotosClip.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
 		4E183A5B5D1740BD816146D4 /* CloudKitBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = 4B6C52C1059047E1B5350464 /* CloudKitBridge.m */; };
@@ -77,6 +78,7 @@
 		1A028E05C823490C9539F32F /* CloudKitManager.swift */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.swift; name = CloudKitManager.swift; path = VacationPhotos/CloudKitManager.swift; sourceTree = "<group>"; };
 		4454B893725F48C0ADBD753B /* VacationPhotosClip.entitlements */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; path = VacationPhotosClip.entitlements; sourceTree = "<group>"; };
 		45E33881A626AE9D9FC15BFC /* SharedVacationViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedVacationViewModel.swift; sourceTree = "<group>"; };
+		CK1234567890ABCDEF12345678 /* CloudKitWebService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudKitWebService.swift; sourceTree = "<group>"; };
 		4B6C52C1059047E1B5350464 /* CloudKitBridge.m */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.c.objc; name = CloudKitBridge.m; path = VacationPhotos/CloudKitBridge.m; sourceTree = "<group>"; };
 		550D3C66F68D6FE457E629BF /* VacationPhotosClip.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = VacationPhotosClip.entitlements; sourceTree = "<group>"; };
 		5FB3A220FEC7A62FD67F0BF3 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -213,6 +215,7 @@
 				C0718C3A4C8D477DC16514BB /* SharedVacationView.swift */,
 				1855BE131E615DA8493E2F73 /* Models.swift */,
 				45E33881A626AE9D9FC15BFC /* SharedVacationViewModel.swift */,
+				CK1234567890ABCDEF12345678 /* CloudKitWebService.swift */,
 				044EF959E12C3D43B9112E0A /* Info.plist */,
 				550D3C66F68D6FE457E629BF /* VacationPhotosClip.entitlements */,
 				B0E7DBC82F1B913200472159 /* Images.xcassets */,
@@ -491,6 +494,7 @@
 				CB18E3E1A78AAD34C5AF1690 /* SharedVacationView.swift in Sources */,
 				FA1A337A65E5B5D00EA50006 /* Models.swift in Sources */,
 				30D0281049DF422C6AF4CB86 /* SharedVacationViewModel.swift in Sources */,
+				CK9876543210FEDCBA87654321 /* CloudKitWebService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -717,7 +721,7 @@
 				CODE_SIGN_ENTITLEMENTS = VacationPhotosClip/VacationPhotosClip.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 9;
+				CURRENT_PROJECT_VERSION = 15;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_ASSET_PATHS = "\"VacationPhotosClip/Preview Content\"";
 				DEVELOPMENT_TEAM = RA5M8S58U3;
@@ -774,7 +778,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 9;
+				CURRENT_PROJECT_VERSION = 15;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_ASSET_PATHS = "\"VacationPhotosClip/Preview Content\"";
 				DEVELOPMENT_TEAM = RA5M8S58U3;
