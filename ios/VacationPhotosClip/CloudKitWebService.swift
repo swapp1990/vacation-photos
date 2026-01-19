@@ -26,14 +26,20 @@ struct CloudKitWebService {
     }
 
     struct FieldValue: Codable {
-        let value: AnyCodableValue?
+        let value: FieldValueContent?
         let type: String?
-    }
 
-    struct AssetValue: Codable {
-        let downloadURL: String?
-        let fileChecksum: String?
-        let size: Int?
+        var assetDownloadURL: String? {
+            return value?.downloadURL
+        }
+
+        var intValue: Int? {
+            return value?.intValue
+        }
+
+        var stringValue: String? {
+            return value?.stringValue
+        }
     }
 
     // MARK: - Fetch Shared Vacation
@@ -180,33 +186,82 @@ struct CloudKitRecord: Codable {
 }
 
 struct CloudKitFieldValue: Codable {
-    let value: AnyCodableValue?
+    let value: FieldValueContent?
     let type: String?
 
-    // Asset specific fields
-    let downloadURL: String?
-    let fileChecksum: String?
-    let size: Int?
+    var stringValue: String? {
+        return value?.stringValue
+    }
+
+    var intValue: Int? {
+        return value?.intValue
+    }
+
+    var assetDownloadURL: String? {
+        return value?.downloadURL
+    }
+}
+
+// Flexible content that can be a primitive OR an asset object
+enum FieldValueContent: Codable {
+    case string(String)
+    case int(Int)
+    case double(Double)
+    case bool(Bool)
+    case asset(AssetContent)
+    case null
+
+    struct AssetContent: Codable {
+        let downloadURL: String?
+        let fileChecksum: String?
+        let size: Int?
+    }
 
     var stringValue: String? {
-        if case .string(let str) = value {
-            return str
-        }
+        if case .string(let str) = self { return str }
         return nil
     }
 
     var intValue: Int? {
-        if case .int(let num) = value {
-            return num
-        }
-        if case .double(let num) = value {
-            return Int(num)
-        }
+        if case .int(let num) = self { return num }
+        if case .double(let num) = self { return Int(num) }
         return nil
     }
 
-    var assetDownloadURL: String? {
-        return downloadURL
+    var downloadURL: String? {
+        if case .asset(let asset) = self { return asset.downloadURL }
+        return nil
+    }
+
+    init(from decoder: Decoder) throws {
+        // First try to decode as a primitive
+        let container = try decoder.singleValueContainer()
+
+        if let stringValue = try? container.decode(String.self) {
+            self = .string(stringValue)
+        } else if let intValue = try? container.decode(Int.self) {
+            self = .int(intValue)
+        } else if let doubleValue = try? container.decode(Double.self) {
+            self = .double(doubleValue)
+        } else if let boolValue = try? container.decode(Bool.self) {
+            self = .bool(boolValue)
+        } else if let assetValue = try? container.decode(AssetContent.self) {
+            self = .asset(assetValue)
+        } else {
+            self = .null
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        switch self {
+        case .string(let value): try container.encode(value)
+        case .int(let value): try container.encode(value)
+        case .double(let value): try container.encode(value)
+        case .bool(let value): try container.encode(value)
+        case .asset(let value): try container.encode(value)
+        case .null: try container.encodeNil()
+        }
     }
 }
 
