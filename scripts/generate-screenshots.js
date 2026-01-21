@@ -159,6 +159,8 @@ async function processTemplate(templateName, mockData, screenshotConfig) {
     html = await processSharedVacation(html, mockData);
   } else if (templateName === 'onboarding') {
     html = await processOnboarding(html, mockData);
+  } else if (templateName === 'app-clip') {
+    html = await processAppClip(html, mockData);
   }
 
   return html;
@@ -333,6 +335,35 @@ async function processSharedVacation(html, mockData) {
   }
 
   html = html.replace('<!-- Photos will be injected here -->', photosHtml);
+
+  return html;
+}
+
+/**
+ * Process app-clip template
+ */
+async function processAppClip(html, mockData) {
+  const tripPhotos = config.samplePhotos[mockData.trip]?.photos || [];
+
+  // Basic info replacements
+  html = html.replace('{{location}}', mockData.location);
+  html = html.replace('{{photoCount}}', mockData.photoCount);
+  html = html.replace('{{sharedBy}}', mockData.sharedBy);
+
+  // Background photo (use first photo from trip)
+  if (tripPhotos.length > 0) {
+    const backgroundUrl = await getPhotoDataUrl(getSamplePhotoPath(mockData.trip, tripPhotos[0]));
+    html = html.replace('{{backgroundPhoto}}', backgroundUrl);
+  }
+
+  // Build thumbnails row (show 3 photos)
+  let thumbnailsHtml = '';
+  for (let i = 0; i < 3 && i < tripPhotos.length; i++) {
+    const photoUrl = await getPhotoDataUrl(getSamplePhotoPath(mockData.trip, tripPhotos[i]));
+    thumbnailsHtml += `<div class="thumbnail" style="background-image: url('${photoUrl}')"></div>`;
+  }
+
+  html = html.replace('<!-- Photos will be injected here -->', thumbnailsHtml);
 
   return html;
 }

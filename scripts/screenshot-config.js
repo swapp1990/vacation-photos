@@ -236,5 +236,20 @@ module.exports = {
         trip: 'hawaii',
       },
     },
+    {
+      id: '06-app-clip',
+      template: 'app-clip',
+      headline: null,
+      subtext: null,
+      background: null,
+      textPosition: null,
+      textColor: null,
+      mockData: {
+        location: 'Maui, Hawaii',
+        sharedBy: 'Sarah',
+        photoCount: 247,
+        trip: 'hawaii',
+      },
+    },
   ],
 };

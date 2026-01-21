@@ -5,6 +5,7 @@ struct SharedVacationView: View {
     @State private var selectedThumbnail: ThumbnailPhoto? = nil
 
     private let primaryColor = Color(red: 0.39, green: 0.40, blue: 0.95) // #6366F1
+    private let cyanHighlight = Color(red: 0.4, green: 0.8, blue: 1.0) // Cyan for name
 
     var body: some View {
         ZStack {
@@ -52,19 +53,46 @@ struct SharedVacationView: View {
 
             Spacer()
 
-            // HERO: Large thumbnails - main focus
-            if !viewModel.thumbnails.isEmpty {
-                heroThumbnails
-            }
+            // Middle section: Location, photo count, and thumbnails
+            middleSection
 
             Spacer()
 
-            // Compact bottom card
-            bottomCard
+            // Bottom section: Tagline, bridge question, and button
+            bottomSection
+                .offset(y: -60) // Move up to close gap
         }
     }
 
-    // MARK: - Hero Thumbnails (Main Focus)
+    // MARK: - Middle Section
+
+    private var middleSection: some View {
+        VStack(spacing: 4) {
+            if let vacation = viewModel.vacation {
+                // Location title
+                Text(vacation.locationName)
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundColor(.white)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+                    .shadow(color: .black.opacity(0.3), radius: 4, x: 0, y: 2)
+
+                // Photo count
+                Text("\(vacation.photoCount) photos")
+                    .font(.system(size: 14))
+                    .foregroundColor(.white.opacity(0.85))
+                    .padding(.bottom, 32)
+            }
+
+            // Hero thumbnails
+            if !viewModel.thumbnails.isEmpty {
+                heroThumbnails
+            }
+        }
+        .padding(.horizontal, 24)
+    }
+
+    // MARK: - Hero Thumbnails
 
     private var heroThumbnails: some View {
         VStack(spacing: 16) {
@@ -119,74 +147,50 @@ struct SharedVacationView: View {
         return (screenWidth - totalSpacing) / CGFloat(count)
     }
 
-    // MARK: - Compact Bottom Card
+    // MARK: - Bottom Section
 
-    private var bottomCard: some View {
-        VStack(spacing: 12) {
-            // Sharer info - highlighted
+    private var bottomSection: some View {
+        VStack(spacing: 16) {
+            // Tagline: "Sarah shared a vacation with you!"
             if let vacation = viewModel.vacation {
                 HStack(spacing: 4) {
                     Text(vacation.sharedBy)
-                        .font(.system(size: 17, weight: .bold))
-                        .foregroundColor(Color(red: 0.4, green: 0.8, blue: 1.0)) // Highlighted cyan
-                    Text("shared")
-                        .font(.system(size: 15))
-                        .foregroundColor(.white.opacity(0.9))
+                        .font(.system(size: 28, weight: .bold))
+                        .foregroundColor(cyanHighlight)
+                    + Text(" shared a vacation with you!")
+                        .font(.system(size: 28, weight: .bold))
+                        .foregroundColor(.white)
                 }
-
-                // Location - smaller
-                Text(vacation.locationName)
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundColor(.white.opacity(0.85))
-                    .multilineTextAlignment(.center)
-                    .lineLimit(2)
-
-                // Photo count
-                Text("\(vacation.photoCount) photos")
-                    .font(.system(size: 13))
-                    .foregroundColor(.white.opacity(0.7))
+                .multilineTextAlignment(.center)
+                .lineHeight(1.3)
+                .shadow(color: .black.opacity(0.3), radius: 4, x: 0, y: 2)
             }
 
-            // Compact features - single line each, smaller
-            VStack(alignment: .leading, spacing: 6) {
-                featureRow(emoji: "✨", text: "Find your own vacation photos")
-                featureRow(emoji: "📁", text: "Auto-organized by location")
-                featureRow(emoji: "🔒", text: "Private - stays on your phone")
-            }
-            .padding(.top, 8)
+            // Bridge question
+            Text("What vacations are hiding in your Photos app?")
+                .font(.system(size: 20, weight: .semibold))
+                .foregroundColor(.white)
+                .multilineTextAlignment(.center)
+                .lineHeight(1.4)
+                .shadow(color: .black.opacity(0.3), radius: 4, x: 0, y: 2)
+                .padding(.top, 8)
 
-            // Let's Go button
+            // Find Out button (matching onboarding style)
             Button(action: openAppStore) {
-                Text("Let's Go!")
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundColor(primaryColor)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .background(Color.white)
-                    .cornerRadius(25)
+                Text("Find Out")
+                    .font(.system(size: 18, weight: .bold))
+                    .tracking(0.5)
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 48)
+                    .padding(.vertical, 16)
+                    .background(primaryColor)
+                    .cornerRadius(9999)
+                    .shadow(color: primaryColor.opacity(0.4), radius: 6, x: 0, y: 4)
             }
             .padding(.top, 8)
         }
-        .padding(.horizontal, 20)
-        .padding(.top, 16)
-        .padding(.bottom, 24)
-        .background(
-            Color.black.opacity(0.6)
-                .clipShape(RoundedCorner(radius: 24, corners: [.topLeft, .topRight]))
-        )
-        .ignoresSafeArea(edges: .bottom)
-    }
-
-    // MARK: - Feature Row
-
-    private func featureRow(emoji: String, text: String) -> some View {
-        HStack(spacing: 8) {
-            Text(emoji)
-                .font(.system(size: 14))
-            Text(text)
-                .font(.system(size: 13))
-                .foregroundColor(.white.opacity(0.85))
-        }
+        .padding(.horizontal, 24)
+        .padding(.bottom, 48)
     }
 
     // MARK: - Image Viewer Overlay
@@ -276,22 +280,6 @@ struct SharedVacationView: View {
     }
 }
 
-// MARK: - Rounded Corner Helper
-
-struct RoundedCorner: Shape {
-    var radius: CGFloat = .infinity
-    var corners: UIRectCorner = .allCorners
-
-    func path(in rect: CGRect) -> Path {
-        let path = UIBezierPath(
-            roundedRect: rect,
-            byRoundingCorners: corners,
-            cornerRadii: CGSize(width: radius, height: radius)
-        )
-        return Path(path.cgPath)
-    }
-}
-
 // MARK: - Error View
 
 struct ErrorView: View {
@@ -339,6 +327,24 @@ struct ErrorView: View {
             .padding(24)
             .background(Color.black.opacity(0.5))
             .cornerRadius(20)
+        }
+    }
+}
+
+// MARK: - Loading View
+
+struct LoadingView: View {
+    let message: String
+
+    var body: some View {
+        VStack(spacing: 16) {
+            ProgressView()
+                .tint(.white)
+                .scaleEffect(1.5)
+
+            Text(message)
+                .font(.system(size: 15))
+                .foregroundColor(.white.opacity(0.8))
         }
     }
 }

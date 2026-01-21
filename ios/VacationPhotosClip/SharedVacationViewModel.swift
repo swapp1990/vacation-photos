@@ -15,7 +15,7 @@ class SharedVacationViewModel: ObservableObject {
     @Published var errorMessage: String?  // Compact error for debugging
 
     // App Store URL for the full app
-    let appStoreURL = URL(string: "https://apps.apple.com/app/vacation-photos/id6740545027")!
+    let appStoreURL = URL(string: "https://apps.apple.com/us/app/vacation-photos/id6756803475")!
 
     func loadVacation(shareId: String, locationName: String? = nil) {
         state = .loading
