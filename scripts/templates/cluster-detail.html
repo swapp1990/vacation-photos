@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    {{BASE_CSS}}
+
+    .container {
+      width: 100%;
+      min-height: 100vh;
+      background: #F8FAFC;
+      position: relative;
+    }
+
+    /* Trip header matching appStyles.js tripHeader */
+    .trip-header {
+      background: #FFFFFF;
+      padding-bottom: 20px;
+      border-bottom: 1px solid #F1F5F9;
+    }
+
+    /* Back button container matching appStyles.js backButtonContainer */
+    .back-button-container {
+      padding: 12px 16px 8px;
+    }
+
+    .back-button-text {
+      font-size: 28px;
+      color: #6366F1;
+    }
+
+    /* Trip header content matching appStyles.js tripHeaderContent */
+    .trip-header-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 0 20px;
+    }
+
+    /* Trip emoji matching appStyles.js tripEmoji */
+    .trip-emoji {
+      font-size: 48px;
+      margin-bottom: 8px;
+    }
+
+    /* Tagline matching appStyles.js tripTagline */
+    .trip-tagline {
+      font-size: 12px;
+      font-weight: 500;
+      color: #94A3B8;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 4px;
+    }
+
+    /* Trip title matching appStyles.js tripTitle */
+    .trip-title {
+      font-size: 32px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      color: #1E293B;
+      text-align: center;
+      margin-bottom: 8px;
+    }
+
+    /* Trip meta matching appStyles.js tripMeta */
+    .trip-meta {
+      font-size: 14px;
+      font-weight: 500;
+      color: #64748B;
+      text-align: center;
+    }
+
+    /* Action buttons matching appStyles.js tripActionButtons */
+    .trip-action-buttons {
+      display: flex;
+      justify-content: center;
+      margin-top: 16px;
+      gap: 16px;
+    }
+
+    .trip-action-button {
+      display: flex;
+      align-items: center;
+      padding: 8px 16px;
+      background: #FFFFFF;
+      border-radius: 16px;
+      border: 1px solid #E2E8F0;
+    }
+
+    .trip-action-button svg {
+      width: 16px;
+      height: 16px;
+      fill: #64748B;
+    }
+
+    .trip-action-button-text {
+      font-size: 14px;
+      font-weight: 500;
+      color: #64748B;
+      margin-left: 8px;
+    }
+
+    /* Gallery matching appStyles.js tripGallery */
+    .trip-gallery {
+      padding: 4px;
+      padding-top: 12px;
+    }
+
+    /* Day section header matching appStyles.js daySectionHeader */
+    .day-section-header {
+      padding: 20px 12px 12px;
+    }
+
+    .day-section-title-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* Day title matching appStyles.js daySectionTitle */
+    .day-section-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: #1E293B;
+      margin-right: 8px;
+    }
+
+    /* Day subtitle matching appStyles.js daySectionSubtitle */
+    .day-section-subtitle {
+      font-size: 14px;
+      font-weight: 500;
+      color: #94A3B8;
+    }
+
+    /* Photo grid */
+    .photo-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 4px;
+      padding: 0 4px;
+    }
+
+    .photo-item {
+      aspect-ratio: 1;
+      background-size: cover;
+      background-position: center;
+      background-color: #E2E8F0;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="dynamic-island"></div>
+
+    <div class="status-bar">
+      <span class="time">9:41</span>
+      <div class="icons">
+        <svg width="18" height="12" viewBox="0 0 18 12" fill="currentColor">
+          <path d="M1 4.5C1 3.67157 1.67157 3 2.5 3H3.5C4.32843 3 5 3.67157 5 4.5V10.5C5 11.3284 4.32843 12 3.5 12H2.5C1.67157 12 1 11.3284 1 10.5V4.5Z"/>
+          <path d="M6 3C6 2.17157 6.67157 1.5 7.5 1.5H8.5C9.32843 1.5 10 2.17157 10 3V10.5C10 11.3284 9.32843 12 8.5 12H7.5C6.67157 12 6 11.3284 6 10.5V3Z"/>
+          <path d="M11 1.5C11 0.671573 11.6716 0 12.5 0H13.5C14.3284 0 15 0.671573 15 1.5V10.5C15 11.3284 14.3284 12 13.5 12H12.5C11.6716 12 11 11.3284 11 10.5V1.5Z"/>
+          <rect x="16" y="3" width="2" height="9" rx="1" fill="currentColor" opacity="0.3"/>
+        </svg>
+        <svg width="16" height="12" viewBox="0 0 16 12" fill="currentColor">
+          <path d="M8 2.5C10.5 2.5 12.7 3.5 14.2 5.2C14.5 5.6 14.5 6.1 14.2 6.5L8.2 11.8C8.1 11.9 7.9 11.9 7.8 11.8L1.8 6.5C1.5 6.1 1.5 5.6 1.8 5.2C3.3 3.5 5.5 2.5 8 2.5Z"/>
+        </svg>
+        <svg width="25" height="12" viewBox="0 0 25 12" fill="currentColor">
+          <rect x="0.5" y="0.5" width="21" height="11" rx="2.5" stroke="currentColor" fill="none"/>
+          <rect x="2" y="2" width="16" height="8" rx="1" fill="#10B981"/>
+          <path d="M23 4V8C24.1 7.5 24.1 4.5 23 4Z"/>
+        </svg>
+      </div>
+    </div>
+
+    <div class="safe-area-top"></div>
+
+    <div class="trip-header">
+      <div class="back-button-container">
+        <span class="back-button-text">‹</span>
+      </div>
+      <div class="trip-header-content">
+        <div class="trip-emoji">🌴</div>
+        <div class="trip-tagline">YOUR TRIP TO</div>
+        <div class="trip-title">{{location}}</div>
+        <div class="trip-meta">{{dates}} · {{photoCount}} photos</div>
+        <div class="trip-action-buttons">
+          <div class="trip-action-button">
+            <svg viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92-1.31-2.92-2.92-2.92z"/></svg>
+            <span class="trip-action-button-text">Share</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="trip-gallery">
+      <!-- Days will be injected here -->
+    </div>
+
+    <div class="safe-area-bottom"></div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    {{BASE_CSS}}
+
+    .container {
+      width: 100%;
+      min-height: 100vh;
+      background: #F8FAFC;
+      position: relative;
+    }
+
+    /* Modal header matching ShareModal styles */
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 16px;
+      border-bottom: 1px solid #E2E8F0;
+    }
+
+    .cancel-button {
+      font-size: 16px;
+      font-weight: 400;
+      color: #6366F1;
+    }
+
+    .header-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: #1E293B;
+    }
+
+    .header-spacer {
+      width: 60px;
+    }
+
+    /* Confirmation content matching ShareModal confirmationContent */
+    .confirmation-content {
+      flex: 1;
+      padding: 16px;
+    }
+
+    /* Preview label matching ShareModal previewLabel */
+    .preview-label {
+      font-size: 14px;
+      font-weight: 600;
+      color: #1E293B;
+      margin-bottom: 8px;
+    }
+
+    /* Photo preview scroll matching ShareModal photoPreviewScroll */
+    .photo-preview-scroll {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+      margin-left: -16px;
+      margin-right: -16px;
+      padding: 0 16px;
+      overflow-x: auto;
+    }
+
+    /* Preview photo wrapper matching ShareModal previewPhotoWrapper */
+    .preview-photo-wrapper {
+      width: 80px;
+      height: 80px;
+      border-radius: 12px;
+      overflow: hidden;
+      flex-shrink: 0;
+      position: relative;
+    }
+
+    .preview-photo {
+      width: 100%;
+      height: 100%;
+      background-size: cover;
+      background-position: center;
+      background-color: #E2E8F0;
+    }
+
+    /* More overlay matching ShareModal previewMoreOverlay */
+    .preview-more-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.6);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .preview-more-text {
+      color: #FFFFFF;
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    /* Share info card matching ShareModal shareInfoCard */
+    .share-info-card {
+      background: #FFFFFF;
+      border-radius: 20px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .share-info-title {
+      font-size: 20px;
+      font-weight: 600;
+      color: #1E293B;
+      text-align: center;
+    }
+
+    .share-info-subtitle {
+      font-size: 16px;
+      font-weight: 400;
+      color: #94A3B8;
+      margin-top: 4px;
+    }
+
+    .share-info-divider {
+      width: 40px;
+      height: 2px;
+      background: #E2E8F0;
+      margin: 16px 0;
+    }
+
+    .share-info-detail {
+      font-size: 16px;
+      font-weight: 400;
+      color: #1E293B;
+    }
+
+    /* Upload button matching ShareModal uploadButton */
+    .upload-button {
+      width: 100%;
+      background: #6366F1;
+      padding: 16px;
+      border-radius: 9999px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 20px;
+    }
+
+    .upload-button-text {
+      font-size: 17px;
+      font-weight: 600;
+      color: #FFFFFF;
+      letter-spacing: 0.3px;
+    }
+
+    /* Upload note matching ShareModal uploadNote */
+    .upload-note {
+      font-size: 12px;
+      font-weight: 500;
+      color: #94A3B8;
+      text-align: center;
+      margin-top: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="dynamic-island"></div>
+
+    <div class="status-bar">
+      <span class="time">9:41</span>
+      <div class="icons">
+        <svg width="18" height="12" viewBox="0 0 18 12" fill="currentColor">
+          <path d="M1 4.5C1 3.67157 1.67157 3 2.5 3H3.5C4.32843 3 5 3.67157 5 4.5V10.5C5 11.3284 4.32843 12 3.5 12H2.5C1.67157 12 1 11.3284 1 10.5V4.5Z"/>
+          <path d="M6 3C6 2.17157 6.67157 1.5 7.5 1.5H8.5C9.32843 1.5 10 2.17157 10 3V10.5C10 11.3284 9.32843 12 8.5 12H7.5C6.67157 12 6 11.3284 6 10.5V3Z"/>
+          <path d="M11 1.5C11 0.671573 11.6716 0 12.5 0H13.5C14.3284 0 15 0.671573 15 1.5V10.5C15 11.3284 14.3284 12 13.5 12H12.5C11.6716 12 11 11.3284 11 10.5V1.5Z"/>
+          <rect x="16" y="3" width="2" height="9" rx="1" fill="currentColor" opacity="0.3"/>
+        </svg>
+        <svg width="16" height="12" viewBox="0 0 16 12" fill="currentColor">
+          <path d="M8 2.5C10.5 2.5 12.7 3.5 14.2 5.2C14.5 5.6 14.5 6.1 14.2 6.5L8.2 11.8C8.1 11.9 7.9 11.9 7.8 11.8L1.8 6.5C1.5 6.1 1.5 5.6 1.8 5.2C3.3 3.5 5.5 2.5 8 2.5Z"/>
+        </svg>
+        <svg width="25" height="12" viewBox="0 0 25 12" fill="currentColor">
+          <rect x="0.5" y="0.5" width="21" height="11" rx="2.5" stroke="currentColor" fill="none"/>
+          <rect x="2" y="2" width="16" height="8" rx="1" fill="#10B981"/>
+          <path d="M23 4V8C24.1 7.5 24.1 4.5 23 4Z"/>
+        </svg>
+      </div>
+    </div>
+
+    <div class="safe-area-top"></div>
+
+    <div class="modal-header">
+      <span class="cancel-button">Cancel</span>
+      <span class="header-title">Share Vacation</span>
+      <div class="header-spacer"></div>
+    </div>
+
+    <div class="confirmation-content">
+      <div class="preview-label">Photos to share</div>
+      <div class="photo-preview-scroll">
+        <!-- Photos will be injected here -->
+      </div>
+
+      <div class="share-info-card">
+        <div class="share-info-title">{{location}}</div>
+        <div class="share-info-subtitle">{{dates}}</div>
+        <div class="share-info-divider"></div>
+        <div class="share-info-detail">{{photoCount}} photos will be uploaded</div>
+      </div>
+
+      <div class="upload-button">
+        <span class="upload-button-text">Upload to iCloud</span>
+      </div>
+
+      <div class="upload-note">After uploading, you'll select who to share with</div>
+    </div>
+
+    <div class="safe-area-bottom"></div>
+  </div>
+</body>
+</html>

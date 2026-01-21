@@ -17,6 +17,7 @@ expo-env.d.ts
 *.p12
 *.key
 *.mobileprovision
+*.ipa
 
 # Metro
 .metro-health-check*
@@ -38,3 +39,7 @@ yarn-error.*
 
 # generated native folders
 /android
+
+# Generated screenshots (can be regenerated with scripts)
+assets/screenshots/output/
+assets/screenshots/sample-photos/

@@ -4,7 +4,8 @@
 
 ### IMPORTANT: This project uses Expo Go + EAS Build
 - **Development**: Use Expo Go app (no local Xcode builds needed)
-- **Production builds**: Use `eas build --platform ios` (cloud builds)
+- **Production builds**: Use `eas build --platform ios --local` (local builds)
+- **ALWAYS** use `--local` flag for EAS builds - don't use cloud builds unless explicitly asked
 - **DO NOT** run `pod install` locally - not needed
 - **DO NOT** suggest Xcode upgrades for building - use EAS Build instead
 

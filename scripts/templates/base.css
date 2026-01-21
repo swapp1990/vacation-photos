@@ -1,0 +1,150 @@
+/* Base styles matching src/styles/theme.js exactly */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', system-ui, sans-serif;
+  background: #F8FAFC;
+  color: #1E293B;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Colors from theme.js */
+:root {
+  --primary: #6366F1;
+  --primary-light: #818CF8;
+  --primary-dark: #4F46E5;
+  --accent: #F59E0B;
+  --accent-light: #FCD34D;
+  --background: #F8FAFC;
+  --surface: #FFFFFF;
+  --text-primary: #1E293B;
+  --text-secondary: #64748B;
+  --text-muted: #94A3B8;
+  --text-inverse: #FFFFFF;
+  --border: #E2E8F0;
+  --divider: #F1F5F9;
+  --success: #10B981;
+  --error: #EF4444;
+}
+
+/* Spacing from theme.js */
+/* xs: 4, sm: 8, md: 12, lg: 16, xl: 20, xxl: 24, xxxl: 32 */
+
+/* Border radius from theme.js */
+/* xs: 4, sm: 8, md: 12, lg: 16, xl: 20, xxl: 24, round: 9999 */
+
+/* Safe area spacing (iPhone 15 Pro Max) */
+.safe-area-top {
+  height: 59px;
+  width: 100%;
+}
+
+.safe-area-bottom {
+  height: 34px;
+  width: 100%;
+}
+
+/* Dynamic Island */
+.dynamic-island {
+  position: absolute;
+  top: 11px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 126px;
+  height: 37px;
+  background: #000000;
+  border-radius: 24px;
+  z-index: 1000;
+}
+
+/* Status bar */
+.status-bar {
+  position: absolute;
+  top: 16px;
+  left: 32px;
+  right: 32px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 17px;
+  font-weight: 600;
+  color: #1E293B;
+  z-index: 999;
+}
+
+.status-bar .time {
+  width: 54px;
+}
+
+.status-bar .icons {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+
+/* Typography from theme.js */
+.text-large-title {
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+
+.text-title {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+}
+
+.text-title2 {
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.text-headline {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.text-body {
+  font-size: 16px;
+  font-weight: 400;
+}
+
+.text-body-bold {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.text-subhead {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.text-caption {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.text-button {
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+/* Shadow styles from theme.js */
+.shadow-small {
+  box-shadow: 0 1px 3px rgba(30, 41, 59, 0.05);
+}
+
+.shadow-medium {
+  box-shadow: 0 4px 12px rgba(30, 41, 59, 0.08);
+}
+
+.shadow-large {
+  box-shadow: 0 8px 24px rgba(30, 41, 59, 0.12);
+}
