@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Linking } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as FileSystem from 'expo-file-system';
 import { parseShareLink, fetchSharedVacation, fetchPreviewPhotos } from '../services/cloudKitService';
 import { getUploadedVacations, getClusterKey, MAX_PHOTOS } from '../services/photoUploadService';
 
@@ -14,6 +15,58 @@ export function useSharedVacations() {
   const [sharedVacations, setSharedVacations] = useState([]);
   const [sharedVacationsDismissed, setSharedVacationsDismissed] = useState(false);
   const [uploadedVacations, setUploadedVacations] = useState({});
+
+  // Check if preview photo files exist, re-fetch if missing
+  const validateAndRefetchPreviewPhotos = useCallback(async (vacations) => {
+    let needsUpdate = false;
+    const updatedVacations = await Promise.all(
+      vacations.map(async (sv) => {
+        // Skip if no preview photos
+        if (!sv.previewPhotos || sv.previewPhotos.length === 0) {
+          return sv;
+        }
+
+        // Check if any preview photo files are missing
+        const filesExist = await Promise.all(
+          sv.previewPhotos.map(async (photo) => {
+            if (!photo.localPath) return false;
+            try {
+              const fileInfo = await FileSystem.getInfoAsync(photo.localPath);
+              return fileInfo.exists;
+            } catch {
+              return false;
+            }
+          })
+        );
+
+        const allFilesExist = filesExist.every(exists => exists);
+
+        // If files are missing, re-fetch preview photos
+        if (!allFilesExist) {
+          console.log(`Re-fetching preview photos for shareId: ${sv.shareId}`);
+          needsUpdate = true;
+          try {
+            const newPreviewPhotos = await fetchPreviewPhotos(sv.shareId);
+            return {
+              ...sv,
+              previewPhotos: newPreviewPhotos,
+            };
+          } catch (error) {
+            console.log(`Failed to re-fetch preview photos for ${sv.shareId}:`, error);
+            // Keep the vacation but clear the invalid preview photos
+            return {
+              ...sv,
+              previewPhotos: [],
+            };
+          }
+        }
+
+        return sv;
+      })
+    );
+
+    return { updatedVacations, needsUpdate };
+  }, []);
 
   // Load saved shared vacations from storage
   const loadSavedSharedVacations = useCallback(async () => {
@@ -31,12 +84,21 @@ export function useSharedVacations() {
             endDate: sv.vacation.endDate ? new Date(sv.vacation.endDate) : null,
           } : null,
         }));
-        setSharedVacations(vacations);
+
+        // Validate preview photos and re-fetch if needed
+        const { updatedVacations, needsUpdate } = await validateAndRefetchPreviewPhotos(vacations);
+
+        setSharedVacations(updatedVacations);
+
+        // Save back to storage if we re-fetched any photos
+        if (needsUpdate) {
+          await AsyncStorage.setItem(SHARED_VACATIONS_KEY, JSON.stringify(updatedVacations));
+        }
       }
     } catch (error) {
       console.log('Error loading saved shared vacations:', error);
     }
-  }, []);
+  }, [validateAndRefetchPreviewPhotos]);
 
   // Load uploaded vacations mapping
   const loadUploadedVacations = useCallback(async () => {
