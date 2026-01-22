@@ -10,6 +10,16 @@ async function requestMediaLibraryPermission() {
   return status === 'granted';
 }
 
+// Check if a file exists at the given path
+async function fileExists(filePath) {
+  try {
+    const fileInfo = await FileSystem.getInfoAsync(filePath);
+    return fileInfo.exists;
+  } catch {
+    return false;
+  }
+}
+
 // Download a shared vacation and its photos
 export async function downloadSharedVacation(shareId) {
   try {
@@ -45,6 +55,15 @@ export async function savePhotoToDevice(photoLocalPath) {
       return {
         success: false,
         error: 'Permission denied to save photos',
+      };
+    }
+
+    // Check if file exists
+    const exists = await fileExists(photoLocalPath);
+    if (!exists) {
+      return {
+        success: false,
+        error: 'Photo file not found. Please reload the vacation and try again.',
       };
     }
 
@@ -85,6 +104,12 @@ export async function saveAllPhotosToDevice(photos, onProgress) {
 
       const batchPromises = batch.map(async (photo) => {
         try {
+          // Check if file exists before trying to save
+          const exists = await fileExists(photo.localPath);
+          if (!exists) {
+            throw new Error('File not found');
+          }
+
           const asset = await MediaLibrary.createAssetAsync(photo.localPath);
           completed++;
           if (onProgress) {
@@ -107,10 +132,17 @@ export async function saveAllPhotosToDevice(photos, onProgress) {
     const failures = results.filter(r => !r.success);
     const successCount = results.filter(r => r.success).length;
 
+    // If any failures were due to missing files, add helpful message
+    const missingFiles = failures.some(f => f.error === 'File not found');
+    const errorMessage = missingFiles
+      ? 'Some photos could not be saved. Please reload the vacation and try again.'
+      : undefined;
+
     return {
       success: failures.length === 0,
       savedCount: successCount,
       failedCount: failures.length,
+      error: errorMessage,
     };
   } catch (error) {
     console.log('Error saving photos to device:', error);
