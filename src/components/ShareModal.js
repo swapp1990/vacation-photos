@@ -12,13 +12,14 @@ import {
   ScrollView,
   Image,
   Dimensions,
+  Clipboard,
 } from 'react-native';
 import * as Contacts from 'expo-contacts';
 import * as MediaLibrary from 'expo-media-library';
 import { StyleSheet } from 'react-native';
 import { colors, spacing, typography, borderRadius } from '../styles/theme';
-import { shareVacationCluster, MAX_PHOTOS, getUserDisplayName, setUserDisplayName } from '../services/photoUploadService';
-import { checkCloudKitAvailability } from '../services/cloudKitService';
+import { shareVacationCluster, MAX_PHOTOS, getUserDisplayName, setUserDisplayName, getUploadedVacations, getClusterKey } from '../services/photoUploadService';
+import { checkCloudKitAvailability, generateShareLink } from '../services/cloudKitService';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const PREVIEW_PHOTO_SIZE = 80;
@@ -80,17 +81,57 @@ export default function ShareModal({ visible, onClose, cluster, onShareComplete 
     }
   }, [visible]);
 
-  // Check if user has set their name
+  // Copy share link to clipboard
+  const handleCopyLink = () => {
+    if (!shareResult?.shareLink) return;
+
+    const shareMessage = `${userName} shared ${locationName}! 🌴\n${dateRange} · ${shareResult.photosUploaded} photos\n\nTap to view instantly (no download needed):\n${shareResult.shareLink}`;
+
+    Clipboard.setString(shareMessage);
+    Alert.alert('Copied!', 'Link copied to clipboard');
+  };
+
+  // Check if user has set their name and if cluster is already uploaded
   const checkUserName = async () => {
     const name = await getUserDisplayName();
     if (name && name !== 'A friend') {
       setUserName(name);
-      // Go to upload confirmation first (upload before selecting contact)
-      setScreen(SCREEN.UPLOAD_CONFIRM);
+
+      // Check if this cluster was already uploaded
+      const alreadyUploaded = await checkIfAlreadyUploaded();
+      if (alreadyUploaded) {
+        // Skip upload screen, go directly to contacts
+        setScreen(SCREEN.CONTACTS);
+        loadContacts();
+      } else {
+        setScreen(SCREEN.UPLOAD_CONFIRM);
+      }
     } else {
       setUserNameInput('');
       setScreen(SCREEN.NAME_INPUT);
     }
+  };
+
+  // Check if cluster was already uploaded and set share result
+  const checkIfAlreadyUploaded = async () => {
+    if (!cluster) return false;
+
+    const clusterKey = getClusterKey(cluster);
+    const uploaded = await getUploadedVacations();
+    const entry = uploaded[clusterKey];
+
+    if (entry?.shareId) {
+      // Set the share result from the existing upload
+      setShareResult({
+        success: true,
+        shareId: entry.shareId,
+        shareLink: generateShareLink(entry.shareId, cluster.locationName),
+        photosUploaded: entry.uploadedCount || Math.min(cluster.photos?.length || 0, MAX_PHOTOS),
+        alreadyUploaded: true,
+      });
+      return true;
+    }
+    return false;
   };
 
   // Handle name submission
@@ -103,8 +144,15 @@ export default function ShareModal({ visible, onClose, cluster, onShareComplete 
 
     await setUserDisplayName(trimmedName);
     setUserName(trimmedName);
-    // Go to upload confirmation (upload before selecting contact)
-    setScreen(SCREEN.UPLOAD_CONFIRM);
+
+    // Check if already uploaded
+    const alreadyUploaded = await checkIfAlreadyUploaded();
+    if (alreadyUploaded) {
+      setScreen(SCREEN.CONTACTS);
+      loadContacts();
+    } else {
+      setScreen(SCREEN.UPLOAD_CONFIRM);
+    }
   };
 
   // Load photo URIs for preview
@@ -235,7 +283,7 @@ export default function ShareModal({ visible, onClose, cluster, onShareComplete 
 
     const phoneNumber = selectedContact.phoneNumbers[0].number.replace(/[\s\-\(\)]/g, '');
 
-    const shareMessage = `${userName} shared ${locationName}! 🌴\n${dateRange} · ${shareResult.photosUploaded} photos\n\n${shareResult.shareLink}`;
+    const shareMessage = `${userName} shared ${locationName}! 🌴\n${dateRange} · ${shareResult.photosUploaded} photos\n\nTap to view instantly (no download needed):\n${shareResult.shareLink}`;
 
     const whatsappUrl = `whatsapp://send?phone=${phoneNumber}&text=${encodeURIComponent(shareMessage)}`;
 
@@ -335,11 +383,11 @@ export default function ShareModal({ visible, onClose, cluster, onShareComplete 
             </View>
 
             <TouchableOpacity style={styles.uploadButton} onPress={handleStartUpload}>
-              <Text style={styles.uploadButtonText}>Upload to iCloud</Text>
+              <Text style={styles.uploadButtonText}>Prepare to Share</Text>
             </TouchableOpacity>
 
             <Text style={styles.uploadNote}>
-              After uploading, you'll select who to share with
+              Photos will be uploaded securely, then you'll pick who to send to
             </Text>
           </ScrollView>
         </View>
@@ -477,7 +525,7 @@ export default function ShareModal({ visible, onClose, cluster, onShareComplete 
           <TouchableOpacity onPress={onClose}>
             <Text style={styles.cancelButton}>Done</Text>
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Select Contact</Text>
+          <Text style={styles.headerTitle}>Share</Text>
           <View style={{ width: 60 }} />
         </View>
 
@@ -485,8 +533,32 @@ export default function ShareModal({ visible, onClose, cluster, onShareComplete 
         {shareResult && (
           <View style={styles.uploadSuccessBanner}>
             <Text style={styles.uploadSuccessText}>
-              ✓ {shareResult.photosUploaded} photos uploaded
+              ✓ {shareResult.photosUploaded} photos ready to share
             </Text>
+          </View>
+        )}
+
+        {/* Copy Link Option */}
+        {shareResult && (
+          <View style={styles.copyLinkSection}>
+            <TouchableOpacity
+              style={styles.copyLinkButton}
+              onPress={handleCopyLink}
+            >
+              <Text style={styles.copyLinkButtonText}>Copy Link</Text>
+            </TouchableOpacity>
+            <Text style={styles.copyLinkHint}>
+              Paste anywhere to share
+            </Text>
+          </View>
+        )}
+
+        {/* Divider */}
+        {shareResult && (
+          <View style={styles.shareDivider}>
+            <View style={styles.shareDividerLine} />
+            <Text style={styles.shareDividerText}>or send via WhatsApp</Text>
+            <View style={styles.shareDividerLine} />
           </View>
         )}
 
@@ -904,5 +976,47 @@ const styles = StyleSheet.create({
     ...typography.subhead,
     color: '#fff',
     fontWeight: '600',
+  },
+  // Copy link section
+  copyLinkSection: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.lg,
+    alignItems: 'center',
+  },
+  copyLinkButton: {
+    backgroundColor: colors.primary,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.xl,
+    borderRadius: borderRadius.lg,
+    minWidth: 160,
+    alignItems: 'center',
+  },
+  copyLinkButtonText: {
+    ...typography.body,
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 16,
+  },
+  copyLinkHint: {
+    ...typography.caption,
+    color: colors.text.muted,
+    marginTop: spacing.sm,
+  },
+  // Share divider
+  shareDivider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+  },
+  shareDividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: colors.border,
+  },
+  shareDividerText: {
+    ...typography.caption,
+    color: colors.text.muted,
+    paddingHorizontal: spacing.md,
   },
 });

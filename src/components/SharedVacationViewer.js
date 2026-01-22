@@ -25,7 +25,8 @@ export default function SharedVacationViewer({ shareId, onClose }) {
   const [error, setError] = useState(null);
   const [vacation, setVacation] = useState(null);
   const [photos, setPhotos] = useState([]);
-  const [selectedPhoto, setSelectedPhoto] = useState(null);
+  const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(null);
+  const [currentViewerIndex, setCurrentViewerIndex] = useState(0);
   const [savingAll, setSavingAll] = useState(false);
   const [saveProgress, setSaveProgress] = useState({ completed: 0, total: 0 });
 
@@ -92,10 +93,13 @@ export default function SharedVacationViewer({ shareId, onClose }) {
     });
   };
 
-  const renderPhoto = ({ item }) => (
+  const renderPhoto = ({ item, index }) => (
     <TouchableOpacity
       style={styles.photoItem}
-      onPress={() => setSelectedPhoto(item)}
+      onPress={() => {
+        setCurrentViewerIndex(index);
+        setSelectedPhotoIndex(index);
+      }}
       activeOpacity={0.8}
     >
       <Image
@@ -106,36 +110,60 @@ export default function SharedVacationViewer({ shareId, onClose }) {
     </TouchableOpacity>
   );
 
+  const handleViewerScroll = (event) => {
+    const index = Math.round(event.nativeEvent.contentOffset.x / SCREEN_WIDTH);
+    setCurrentViewerIndex(index);
+  };
+
   const renderPhotoViewer = () => (
     <Modal
-      visible={selectedPhoto !== null}
+      visible={selectedPhotoIndex !== null}
       transparent
       animationType="fade"
-      onRequestClose={() => setSelectedPhoto(null)}
+      onRequestClose={() => setSelectedPhotoIndex(null)}
     >
       <SafeAreaProvider>
         <View style={styles.viewerContainer}>
           <StatusBar style="light" />
-          {selectedPhoto && (
-            <Image
-              source={{ uri: `file://${selectedPhoto.localPath}` }}
-              style={styles.fullImage}
-              resizeMode="contain"
-            />
-          )}
-          <SafeAreaView style={styles.viewerOverlay} edges={['top', 'bottom']}>
-            <View style={styles.viewerHeader}>
+          <FlatList
+            data={photos}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            initialScrollIndex={selectedPhotoIndex || 0}
+            getItemLayout={(data, index) => ({
+              length: SCREEN_WIDTH,
+              offset: SCREEN_WIDTH * index,
+              index,
+            })}
+            onMomentumScrollEnd={handleViewerScroll}
+            keyExtractor={(item) => `viewer-${item.orderIndex}`}
+            renderItem={({ item }) => (
+              <View style={{ width: SCREEN_WIDTH, height: '100%', justifyContent: 'center' }}>
+                <Image
+                  source={{ uri: `file://${item.localPath}` }}
+                  style={styles.fullImage}
+                  resizeMode="contain"
+                />
+              </View>
+            )}
+          />
+          <SafeAreaView style={styles.viewerOverlay} edges={['top', 'bottom']} pointerEvents="box-none">
+            <View style={styles.viewerHeader} pointerEvents="box-none">
               <TouchableOpacity
                 style={styles.viewerCloseButton}
-                onPress={() => setSelectedPhoto(null)}
+                onPress={() => setSelectedPhotoIndex(null)}
               >
                 <Text style={styles.viewerCloseText}>Close</Text>
               </TouchableOpacity>
+              <Text style={styles.viewerCounter}>
+                {(currentViewerIndex + 1)} / {photos.length}
+              </Text>
             </View>
-            <View style={styles.viewerFooter}>
+            <View style={styles.viewerFooter} pointerEvents="box-none">
               <TouchableOpacity
                 style={styles.saveButton}
-                onPress={() => handleSavePhoto(selectedPhoto)}
+                onPress={() => handleSavePhoto(photos[currentViewerIndex])}
               >
                 <Text style={styles.saveButtonText}>Save to Photos</Text>
               </TouchableOpacity>
@@ -405,13 +433,19 @@ const styles = StyleSheet.create({
   },
   viewerHeader: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     padding: spacing.lg,
   },
   viewerCloseButton: {
     padding: spacing.sm,
   },
   viewerCloseText: {
+    ...typography.body,
+    color: colors.text.inverse,
+    fontWeight: '600',
+  },
+  viewerCounter: {
     ...typography.body,
     color: colors.text.inverse,
     fontWeight: '600',

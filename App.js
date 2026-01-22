@@ -1,5 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
-import { useState, useEffect, useCallback, memo } from 'react';
+import { useState, useEffect, useCallback, memo, useRef } from 'react';
 import {
   Text,
   View,
@@ -14,6 +14,7 @@ import {
   Platform,
   Modal,
   TextInput,
+  Animated,
 } from 'react-native';
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
 import * as MediaLibrary from 'expo-media-library';
@@ -117,6 +118,45 @@ const PhotoThumbnail = memo(({ photo, onPress, size = imageSize }) => {
   );
 });
 
+// Fullscreen photo component for the swipeable viewer
+const FullscreenPhoto = memo(({ photo }) => {
+  const [uri, setUri] = useState(() => uriCache.get(photo.id) || null);
+
+  useEffect(() => {
+    if (uri) return;
+
+    const cached = uriCache.get(photo.id);
+    if (cached) {
+      setUri(cached);
+      return;
+    }
+
+    MediaLibrary.getAssetInfoAsync(photo.id)
+      .then((info) => {
+        const photoUri = info.localUri || info.uri;
+        if (photoUri) {
+          uriCache.set(photo.id, photoUri);
+          setUri(photoUri);
+        }
+      })
+      .catch(() => {});
+  }, [photo.id, uri]);
+
+  return (
+    <View style={{ width, height: '100%', justifyContent: 'center', alignItems: 'center' }}>
+      {uri ? (
+        <Image
+          source={{ uri }}
+          style={styles.fullImage}
+          resizeMode="contain"
+        />
+      ) : (
+        <ActivityIndicator size="large" color="#fff" />
+      )}
+    </View>
+  );
+});
+
 export default function App() {
   // ==========================================
   // HOOKS - Business logic from custom hooks
@@ -176,6 +216,7 @@ export default function App() {
   // UI STATE - Navigation and modals
   // ==========================================
   const [selectedImage, setSelectedImage] = useState(null);
+  const [viewerIndex, setViewerIndex] = useState(0);
   const [selectedCluster, setSelectedCluster] = useState(null);
   const [selectedYear, setSelectedYear] = useState(null);
   const [sharedVacationId, setSharedVacationId] = useState(null);
@@ -194,6 +235,14 @@ export default function App() {
   // App Clip handoff state
   const [pendingAppClipShare, setPendingAppClipShare] = useState(null);
   const [showAppClipPrompt, setShowAppClipPrompt] = useState(false);
+
+  // Animation refs for collapsible header
+  const scrollY = useRef(new Animated.Value(0)).current;
+
+  // Reset scroll position when cluster changes
+  useEffect(() => {
+    scrollY.setValue(0);
+  }, [selectedCluster?.id]);
 
   // ==========================================
   // EFFECTS
@@ -562,14 +611,57 @@ export default function App() {
   }
 
   if (selectedImage) {
+    const { photos: viewerPhotos, initialIndex, startDate } = selectedImage;
+    const currentPhoto = viewerPhotos[viewerIndex] || viewerPhotos[0];
+
+    // Calculate which day this photo is from
+    let dayLabel = '';
+    if (startDate && currentPhoto?.creationTime) {
+      const photoDate = new Date(currentPhoto.creationTime);
+      const start = new Date(startDate);
+      start.setHours(0, 0, 0, 0);
+      photoDate.setHours(0, 0, 0, 0);
+      const dayNum = Math.floor((photoDate - start) / (1000 * 60 * 60 * 24)) + 1;
+      if (dayNum > 0) {
+        dayLabel = `Day ${dayNum}`;
+      }
+    }
+
     return (
-      <Screen.Fullscreen onClose={() => setSelectedImage(null)}>
-        <Image
-          source={{ uri: selectedImage }}
-          style={styles.fullImage}
-          resizeMode="contain"
-        />
-      </Screen.Fullscreen>
+      <SafeAreaProvider>
+        <View style={{ flex: 1, backgroundColor: '#000' }}>
+          <StatusBar style="light" />
+          <FlatList
+            data={viewerPhotos}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            initialScrollIndex={initialIndex}
+            getItemLayout={(data, index) => ({
+              length: width,
+              offset: width * index,
+              index,
+            })}
+            onMomentumScrollEnd={(e) => {
+              const newIndex = Math.round(e.nativeEvent.contentOffset.x / width);
+              setViewerIndex(newIndex);
+            }}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => (
+              <FullscreenPhoto photo={item} />
+            )}
+          />
+          <SafeAreaView style={styles.viewerOverlay} edges={['top']} pointerEvents="box-none">
+            <View style={styles.viewerTopBar}>
+              <Text style={styles.viewerDayLabel}>{dayLabel}</Text>
+              <TouchableOpacity onPress={() => setSelectedImage(null)}>
+                <Text style={styles.viewerCloseButton}>Done</Text>
+              </TouchableOpacity>
+              <Text style={styles.viewerCounter}>{viewerIndex + 1} / {viewerPhotos.length}</Text>
+            </View>
+          </SafeAreaView>
+        </View>
+      </SafeAreaProvider>
     );
   }
 
@@ -602,47 +694,91 @@ export default function App() {
     const locationCity = selectedCluster.locationName?.split(',')[0] || 'Trip';
     const photosByDay = groupPhotosByDay(selectedCluster.photos, selectedCluster.startDate);
 
+    // Animation values for collapsible header
+    const HEADER_MAX_HEIGHT = 280;
+    const HEADER_MIN_HEIGHT = 56;
+    const HEADER_SCROLL_DISTANCE = HEADER_MAX_HEIGHT - HEADER_MIN_HEIGHT;
+
+    const headerHeight = scrollY.interpolate({
+      inputRange: [0, HEADER_SCROLL_DISTANCE],
+      outputRange: [HEADER_MAX_HEIGHT, HEADER_MIN_HEIGHT],
+      extrapolate: 'clamp',
+    });
+
+    const headerContentOpacity = scrollY.interpolate({
+      inputRange: [0, HEADER_SCROLL_DISTANCE / 2],
+      outputRange: [1, 0],
+      extrapolate: 'clamp',
+    });
+
+    const compactHeaderOpacity = scrollY.interpolate({
+      inputRange: [HEADER_SCROLL_DISTANCE / 2, HEADER_SCROLL_DISTANCE],
+      outputRange: [0, 1],
+      extrapolate: 'clamp',
+    });
+
     return (
       <SafeAreaProvider>
         <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
           <StatusBar style="auto" />
-          <View style={styles.tripHeader}>
-            <TouchableOpacity onPress={() => setSelectedCluster(null)} style={styles.backButtonContainer}>
-              <Text style={styles.backButtonText}>←</Text>
-            </TouchableOpacity>
-            <View style={styles.tripHeaderContent}>
-              <Text style={styles.tripEmoji}>{vibe.emoji}</Text>
-              <Text style={styles.tripTagline}>{vibe.tagline}</Text>
-              <Text style={styles.tripTitle}>{locationCity}</Text>
-              <Text style={styles.tripMeta}>
-                {formatDateRange(selectedCluster.startDate, selectedCluster.endDate)}
-                {' · '}{selectedCluster.photos.length} photos
-                {selectedCluster.days > 1 ? ` · ${selectedCluster.days} days` : ''}
-              </Text>
-              {/* Action buttons */}
-              <View style={styles.tripActionButtons}>
-                <TouchableOpacity
-                  style={styles.tripActionButton}
-                  onPress={() => setShowDetailLocationModal(true)}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons name="location-outline" size={16} color={colors.text.secondary} />
-                  <Text style={styles.tripActionButtonText}>Edit Location</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.tripActionButton}
-                  onPress={() => setShowDetailShareModal(true)}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons name="arrow-redo" size={16} color={colors.primary} />
-                  <Text style={[styles.tripActionButtonText, { color: colors.primary }]}>Share</Text>
-                </TouchableOpacity>
+
+          {/* Animated Header */}
+          <Animated.View style={[styles.tripHeaderAnimated, { height: headerHeight }]}>
+            {/* Compact header - shows when scrolled */}
+            <Animated.View style={[styles.compactHeader, { opacity: compactHeaderOpacity }]}>
+              <TouchableOpacity onPress={() => setSelectedCluster(null)} style={styles.compactBackButton}>
+                <Text style={styles.backButtonText}>←</Text>
+              </TouchableOpacity>
+              <Text style={styles.compactTitle} numberOfLines={1}>{locationCity}</Text>
+              <TouchableOpacity onPress={() => setShowDetailShareModal(true)} style={styles.compactShareButton}>
+                <Ionicons name="arrow-redo" size={20} color={colors.primary} />
+              </TouchableOpacity>
+            </Animated.View>
+
+            {/* Full header - shows when at top */}
+            <Animated.View style={[styles.fullHeaderContent, { opacity: headerContentOpacity }]}>
+              <TouchableOpacity onPress={() => setSelectedCluster(null)} style={styles.backButtonContainer}>
+                <Text style={styles.backButtonText}>←</Text>
+              </TouchableOpacity>
+              <View style={styles.tripHeaderContent}>
+                <Text style={styles.tripEmoji}>{vibe.emoji}</Text>
+                <Text style={styles.tripTagline}>{vibe.tagline}</Text>
+                <Text style={styles.tripTitle}>{locationCity}</Text>
+                <Text style={styles.tripMeta}>
+                  {formatDateRange(selectedCluster.startDate, selectedCluster.endDate)}
+                  {' · '}{selectedCluster.photos.length} photos
+                  {selectedCluster.days > 1 ? ` · ${selectedCluster.days} days` : ''}
+                </Text>
+                <View style={styles.tripActionButtons}>
+                  <TouchableOpacity
+                    style={styles.tripActionButton}
+                    onPress={() => setShowDetailLocationModal(true)}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="location-outline" size={16} color={colors.text.secondary} />
+                    <Text style={styles.tripActionButtonText}>Edit Location</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.tripActionButton}
+                    onPress={() => setShowDetailShareModal(true)}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="arrow-redo" size={16} color={colors.primary} />
+                    <Text style={[styles.tripActionButtonText, { color: colors.primary }]}>Share</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
-            </View>
-          </View>
-          <SectionList
+            </Animated.View>
+          </Animated.View>
+
+          <Animated.SectionList
             sections={photosByDay}
             keyExtractor={(item) => item.id}
+            onScroll={Animated.event(
+              [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+              { useNativeDriver: false }
+            )}
+            scrollEventThrottle={16}
             renderSectionHeader={({ section }) => (
               <View style={styles.daySectionHeader}>
                 <View style={styles.daySectionTitleRow}>
@@ -673,9 +809,24 @@ export default function App() {
               const rowPhotos = section.data.slice(index, index + 3);
               return (
                 <View style={styles.photoRow}>
-                  {rowPhotos.map(photo => (
-                    <PhotoThumbnail key={photo.id} photo={photo} onPress={setSelectedImage} />
-                  ))}
+                  {rowPhotos.map((photo, rowIndex) => {
+                    const photoIndex = selectedCluster.photos.findIndex(p => p.id === photo.id);
+                    return (
+                      <PhotoThumbnail
+                        key={photo.id}
+                        photo={photo}
+                        onPress={() => {
+                          const idx = photoIndex >= 0 ? photoIndex : 0;
+                          setViewerIndex(idx);
+                          setSelectedImage({
+                            photos: selectedCluster.photos,
+                            initialIndex: idx,
+                            startDate: selectedCluster.startDate,
+                          });
+                        }}
+                      />
+                    );
+                  })}
                 </View>
               );
             }}

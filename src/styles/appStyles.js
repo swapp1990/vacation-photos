@@ -405,6 +405,40 @@ export default StyleSheet.create({
     width: '100%',
   },
 
+  // Photo Viewer Overlay
+  viewerOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    paddingTop: 60,
+  },
+  viewerTopBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: spacing.lg,
+  },
+  viewerDayLabel: {
+    color: colors.text.inverse,
+    fontSize: 16,
+    fontWeight: '600',
+    flex: 1,
+  },
+  viewerCloseButton: {
+    color: colors.text.inverse,
+    fontSize: 17,
+    fontWeight: '600',
+    paddingHorizontal: spacing.md,
+  },
+  viewerCounter: {
+    color: colors.text.inverse,
+    fontSize: 14,
+    opacity: 0.8,
+    flex: 1,
+    textAlign: 'right',
+  },
+
   // Footer & Load More
   footerContainer: {
     alignItems: 'center',
@@ -571,6 +605,44 @@ export default StyleSheet.create({
     paddingBottom: spacing.xl,
     borderBottomWidth: 1,
     borderBottomColor: colors.divider,
+  },
+  // Animated Collapsible Header
+  tripHeaderAnimated: {
+    backgroundColor: colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.divider,
+    overflow: 'hidden',
+  },
+  compactHeader: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 56,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.md,
+  },
+  compactBackButton: {
+    padding: spacing.sm,
+  },
+  compactTitle: {
+    flex: 1,
+    ...typography.headline,
+    color: colors.text.primary,
+    textAlign: 'center',
+    marginHorizontal: spacing.md,
+  },
+  compactShareButton: {
+    padding: spacing.sm,
+  },
+  fullHeaderContent: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   backButtonContainer: {
     paddingHorizontal: spacing.lg,

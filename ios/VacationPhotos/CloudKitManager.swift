@@ -149,18 +149,33 @@ class CloudKitManager: NSObject {
         case .success(let (matchResults, _)):
           var photos: [[String: Any]] = []
 
+          // Create a directory for this share's photos
+          let cacheDir = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first!
+          let shareDir = cacheDir.appendingPathComponent("shared_photos/\(shareId)")
+          try? FileManager.default.createDirectory(at: shareDir, withIntermediateDirectories: true)
+
           for (_, recordResult) in matchResults {
             switch recordResult {
             case .success(let record):
+              let orderIndex = record["orderIndex"] as? Int ?? 0
               var photoInfo: [String: Any] = [
-                "orderIndex": record["orderIndex"] as? Int ?? 0,
+                "orderIndex": orderIndex,
                 "width": record["width"] as? Int ?? 0,
                 "height": record["height"] as? Int ?? 0
               ]
 
               if let asset = record["photoAsset"] as? CKAsset,
                  let fileURL = asset.fileURL {
-                photoInfo["localPath"] = fileURL.path
+                // Copy to persistent location
+                let destURL = shareDir.appendingPathComponent("photo_\(orderIndex).jpg")
+                try? FileManager.default.removeItem(at: destURL) // Remove if exists
+                do {
+                  try FileManager.default.copyItem(at: fileURL, to: destURL)
+                  photoInfo["localPath"] = destURL.path
+                } catch {
+                  print("Error copying photo: \(error)")
+                  photoInfo["localPath"] = fileURL.path // Fallback to temp path
+                }
               }
 
               photos.append(photoInfo)
@@ -195,18 +210,33 @@ class CloudKitManager: NSObject {
         case .success(let (matchResults, _)):
           var photos: [[String: Any]] = []
 
+          // Create a directory for this share's photos
+          let cacheDir = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first!
+          let shareDir = cacheDir.appendingPathComponent("shared_photos/\(shareId)")
+          try? FileManager.default.createDirectory(at: shareDir, withIntermediateDirectories: true)
+
           for (_, recordResult) in matchResults {
             switch recordResult {
             case .success(let record):
+              let orderIndex = record["orderIndex"] as? Int ?? 0
               var photoInfo: [String: Any] = [
-                "orderIndex": record["orderIndex"] as? Int ?? 0,
+                "orderIndex": orderIndex,
                 "width": record["width"] as? Int ?? 0,
                 "height": record["height"] as? Int ?? 0
               ]
 
               if let asset = record["photoAsset"] as? CKAsset,
                  let fileURL = asset.fileURL {
-                photoInfo["localPath"] = fileURL.path
+                // Copy to persistent location
+                let destURL = shareDir.appendingPathComponent("photo_\(orderIndex).jpg")
+                try? FileManager.default.removeItem(at: destURL) // Remove if exists
+                do {
+                  try FileManager.default.copyItem(at: fileURL, to: destURL)
+                  photoInfo["localPath"] = destURL.path
+                } catch {
+                  print("Error copying preview photo: \(error)")
+                  photoInfo["localPath"] = fileURL.path // Fallback to temp path
+                }
               }
 
               photos.append(photoInfo)
