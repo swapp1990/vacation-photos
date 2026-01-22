@@ -23,7 +23,7 @@ struct SharedVacationView: View {
 
             switch viewModel.state {
             case .loading:
-                LoadingView(message: "Loading...")
+                AppClipLoadingView(message: "Loading...")
 
             case .error(let message):
                 ErrorView(message: message) {
@@ -162,7 +162,6 @@ struct SharedVacationView: View {
                         .foregroundColor(.white)
                 }
                 .multilineTextAlignment(.center)
-                .lineHeight(1.3)
                 .shadow(color: .black.opacity(0.3), radius: 4, x: 0, y: 2)
             }
 
@@ -171,7 +170,6 @@ struct SharedVacationView: View {
                 .font(.system(size: 20, weight: .semibold))
                 .foregroundColor(.white)
                 .multilineTextAlignment(.center)
-                .lineHeight(1.4)
                 .shadow(color: .black.opacity(0.3), radius: 4, x: 0, y: 2)
                 .padding(.top, 8)
 
@@ -331,9 +329,9 @@ struct ErrorView: View {
     }
 }
 
-// MARK: - Loading View
+// MARK: - App Clip Loading View
 
-struct LoadingView: View {
+struct AppClipLoadingView: View {
     let message: String
 
     var body: some View {
