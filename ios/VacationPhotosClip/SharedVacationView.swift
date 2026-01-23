@@ -154,22 +154,26 @@ struct SharedVacationView: View {
             // Tagline: "Sarah shared a vacation with you!"
             if let vacation = viewModel.vacation {
                 (Text(vacation.sharedBy)
-                    .font(.system(size: 22, weight: .bold))
+                    .font(.system(size: 24, weight: .bold))
                     .foregroundColor(cyanHighlight)
                 + Text(" shared a vacation with you!")
-                    .font(.system(size: 22, weight: .bold))
+                    .font(.system(size: 24, weight: .bold))
                     .foregroundColor(.white))
                 .multilineTextAlignment(.center)
                 .lineLimit(2)
-                .minimumScaleFactor(0.8)
+                .minimumScaleFactor(0.5)
+                .frame(maxWidth: .infinity)
                 .shadow(color: .black.opacity(0.3), radius: 4, x: 0, y: 2)
             }
 
             // Bridge question
             Text("What vacations are hiding in your Photos app?")
-                .font(.system(size: 20, weight: .semibold))
+                .font(.system(size: 18, weight: .semibold))
                 .foregroundColor(.white)
                 .multilineTextAlignment(.center)
+                .lineLimit(2)
+                .minimumScaleFactor(0.6)
+                .frame(maxWidth: .infinity)
                 .shadow(color: .black.opacity(0.3), radius: 4, x: 0, y: 2)
                 .padding(.top, 8)
 
@@ -197,9 +201,49 @@ struct SharedVacationView: View {
         ZStack {
             Color.black.opacity(0.95)
                 .ignoresSafeArea()
+                .onTapGesture {
+                    withAnimation(.easeOut(duration: 0.2)) {
+                        selectedPhotoIndex = nil
+                    }
+                }
 
-            VStack(spacing: 0) {
-                // Close button header
+            // Swipeable photo viewer
+            TabView(selection: Binding(
+                get: { selectedPhotoIndex ?? 0 },
+                set: { selectedPhotoIndex = $0 }
+            )) {
+                ForEach(Array(viewModel.thumbnails.prefix(3).enumerated()), id: \.element.id) { index, thumbnail in
+                    AsyncImage(url: thumbnail.url) { phase in
+                        switch phase {
+                        case .empty:
+                            ProgressView()
+                                .tint(.white)
+                                .scaleEffect(1.5)
+                        case .success(let image):
+                            image
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .cornerRadius(12)
+                                .padding(.horizontal, 16)
+                        case .failure:
+                            VStack(spacing: 12) {
+                                Image(systemName: "photo")
+                                    .font(.system(size: 48))
+                                    .foregroundColor(.white.opacity(0.5))
+                                Text("Failed to load")
+                                    .foregroundColor(.white.opacity(0.7))
+                            }
+                        @unknown default:
+                            EmptyView()
+                        }
+                    }
+                    .tag(index)
+                }
+            }
+            .tabViewStyle(.page(indexDisplayMode: .automatic))
+
+            // Close button overlay (always on top)
+            VStack {
                 HStack {
                     Spacer()
                     Button(action: {
@@ -208,52 +252,20 @@ struct SharedVacationView: View {
                         }
                     }) {
                         Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 30))
-                            .foregroundColor(.white.opacity(0.7))
+                            .font(.system(size: 32))
+                            .foregroundColor(.white)
+                            .shadow(color: .black.opacity(0.5), radius: 4)
                     }
-                    .padding(20)
+                    .padding(.top, 60)
+                    .padding(.trailing, 20)
                 }
-
-                // Swipeable photo viewer
-                TabView(selection: Binding(
-                    get: { selectedPhotoIndex ?? 0 },
-                    set: { selectedPhotoIndex = $0 }
-                )) {
-                    ForEach(Array(viewModel.thumbnails.prefix(3).enumerated()), id: \.element.id) { index, thumbnail in
-                        AsyncImage(url: thumbnail.url) { phase in
-                            switch phase {
-                            case .empty:
-                                ProgressView()
-                                    .tint(.white)
-                                    .scaleEffect(1.5)
-                            case .success(let image):
-                                image
-                                    .resizable()
-                                    .aspectRatio(contentMode: .fit)
-                                    .cornerRadius(12)
-                                    .padding(.horizontal, 16)
-                            case .failure:
-                                VStack(spacing: 12) {
-                                    Image(systemName: "photo")
-                                        .font(.system(size: 48))
-                                        .foregroundColor(.white.opacity(0.5))
-                                    Text("Failed to load")
-                                        .foregroundColor(.white.opacity(0.7))
-                                }
-                            @unknown default:
-                                EmptyView()
-                            }
-                        }
-                        .tag(index)
-                    }
-                }
-                .tabViewStyle(.page(indexDisplayMode: .automatic))
+                Spacer()
 
                 // Footer
                 Text("Get the app to save photos")
                     .font(.system(size: 14))
                     .foregroundColor(.white.opacity(0.6))
-                    .padding(.bottom, 40)
+                    .padding(.bottom, 50)
             }
         }
         .transition(.opacity)

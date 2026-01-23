@@ -69,7 +69,9 @@
       "Bash(pod --version:*)",
       "Bash(brew reinstall:*)",
       "Bash(plutil:*)",
-      "Bash(git rm:*)"
+      "Bash(git rm:*)",
+      "Bash(nvm alias:*)",
+      "Bash(nvm uninstall:*)"
     ]
   }
 }
