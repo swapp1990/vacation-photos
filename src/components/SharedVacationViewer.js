@@ -51,7 +51,7 @@ export default function SharedVacationViewer({ shareId, onClose }) {
   };
 
   const handleSavePhoto = async (photo) => {
-    const result = await savePhotoToDevice(photo.localPath);
+    const result = await savePhotoToDevice(photo, shareId);
 
     if (result.success) {
       Alert.alert('Saved', 'Photo saved to your library');
@@ -66,7 +66,7 @@ export default function SharedVacationViewer({ shareId, onClose }) {
     setSavingAll(true);
     setSaveProgress({ completed: 0, total: photos.length });
 
-    const result = await saveAllPhotosToDevice(photos, (completed, total) => {
+    const result = await saveAllPhotosToDevice(photos, shareId, (completed, total) => {
       setSaveProgress({ completed, total });
     });
 

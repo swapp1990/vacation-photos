@@ -25,19 +25,11 @@ class SharedVacationViewModel: ObservableObject {
 
         Task {
             do {
-                // First fetch vacation metadata to get photoCount
+                // Fetch vacation metadata first
                 let fetchedVacation = try await CloudKitWebService.fetchSharedVacation(shareId: shareId)
 
-                // Then fetch photos using lookup (requires knowing photoCount for predictable record names)
-                let photoCount = fetchedVacation?.photoCount ?? 3
-                let fetchedPhotos = try await CloudKitWebService.fetchPreviewPhotos(
-                    shareId: shareId,
-                    limit: 3,
-                    photoCount: photoCount
-                )
-
                 if let vacationInfo = fetchedVacation {
-                    // Got data from CloudKit
+                    // Show UI immediately with vacation info
                     self.vacation = SharedVacation(
                         shareId: shareId,
                         locationName: vacationInfo.locationName,
@@ -45,6 +37,14 @@ class SharedVacationViewModel: ObservableObject {
                         endDate: Date(),
                         photoCount: vacationInfo.photoCount,
                         sharedBy: vacationInfo.sharedBy
+                    )
+                    self.state = .loaded
+
+                    // Load photo URLs in background (AsyncImage handles actual image loading)
+                    let fetchedPhotos = try await CloudKitWebService.fetchPreviewPhotos(
+                        shareId: shareId,
+                        limit: 3,
+                        photoCount: vacationInfo.photoCount
                     )
 
                     self.thumbnails = fetchedPhotos.compactMap { photo in
@@ -57,7 +57,6 @@ class SharedVacationViewModel: ObservableObject {
                         )
                     }
 
-                    // Debug: show if photos failed to load
                     if self.thumbnails.isEmpty && vacationInfo.photoCount > 0 {
                         self.errorMessage = "Photos: 0/\(vacationInfo.photoCount) loaded"
                     }
@@ -71,14 +70,11 @@ class SharedVacationViewModel: ObservableObject {
                         photoCount: 0,
                         sharedBy: "A friend"
                     )
+                    self.state = .loaded
                 }
-
-                self.state = .loaded
 
             } catch {
                 print("CloudKit fetch error: \(error)")
-
-                // Set compact error message for debugging
                 self.errorMessage = "CloudKit: \(error.localizedDescription)"
 
                 // Fallback: show landing page with URL-provided location

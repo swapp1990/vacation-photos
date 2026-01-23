@@ -2,7 +2,7 @@ import SwiftUI
 
 struct SharedVacationView: View {
     @ObservedObject var viewModel: SharedVacationViewModel
-    @State private var selectedThumbnail: ThumbnailPhoto? = nil
+    @State private var selectedPhotoIndex: Int? = nil
 
     private let primaryColor = Color(red: 0.39, green: 0.40, blue: 0.95) // #6366F1
     private let cyanHighlight = Color(red: 0.4, green: 0.8, blue: 1.0) // Cyan for name
@@ -37,8 +37,8 @@ struct SharedVacationView: View {
             }
 
             // Fullscreen image viewer overlay
-            if let thumbnail = selectedThumbnail {
-                imageViewerOverlay(thumbnail: thumbnail)
+            if selectedPhotoIndex != nil {
+                imageViewerOverlay
             }
         }
     }
@@ -97,10 +97,10 @@ struct SharedVacationView: View {
     private var heroThumbnails: some View {
         VStack(spacing: 16) {
             HStack(spacing: 12) {
-                ForEach(viewModel.thumbnails.prefix(3)) { thumbnail in
+                ForEach(Array(viewModel.thumbnails.prefix(3).enumerated()), id: \.element.id) { index, thumbnail in
                     Button(action: {
                         withAnimation(.easeInOut(duration: 0.2)) {
-                            selectedThumbnail = thumbnail
+                            selectedPhotoIndex = index
                         }
                     }) {
                         AsyncImage(url: thumbnail.url) { phase in
@@ -153,15 +153,15 @@ struct SharedVacationView: View {
         VStack(spacing: 16) {
             // Tagline: "Sarah shared a vacation with you!"
             if let vacation = viewModel.vacation {
-                HStack(spacing: 4) {
-                    Text(vacation.sharedBy)
-                        .font(.system(size: 28, weight: .bold))
-                        .foregroundColor(cyanHighlight)
-                    + Text(" shared a vacation with you!")
-                        .font(.system(size: 28, weight: .bold))
-                        .foregroundColor(.white)
-                }
+                (Text(vacation.sharedBy)
+                    .font(.system(size: 22, weight: .bold))
+                    .foregroundColor(cyanHighlight)
+                + Text(" shared a vacation with you!")
+                    .font(.system(size: 22, weight: .bold))
+                    .foregroundColor(.white))
                 .multilineTextAlignment(.center)
+                .lineLimit(2)
+                .minimumScaleFactor(0.8)
                 .shadow(color: .black.opacity(0.3), radius: 4, x: 0, y: 2)
             }
 
@@ -193,22 +193,18 @@ struct SharedVacationView: View {
 
     // MARK: - Image Viewer Overlay
 
-    private func imageViewerOverlay(thumbnail: ThumbnailPhoto) -> some View {
+    private var imageViewerOverlay: some View {
         ZStack {
             Color.black.opacity(0.95)
                 .ignoresSafeArea()
-                .onTapGesture {
-                    withAnimation(.easeOut(duration: 0.2)) {
-                        selectedThumbnail = nil
-                    }
-                }
 
-            VStack {
+            VStack(spacing: 0) {
+                // Close button header
                 HStack {
                     Spacer()
                     Button(action: {
                         withAnimation(.easeOut(duration: 0.2)) {
-                            selectedThumbnail = nil
+                            selectedPhotoIndex = nil
                         }
                     }) {
                         Image(systemName: "xmark.circle.fill")
@@ -218,35 +214,42 @@ struct SharedVacationView: View {
                     .padding(20)
                 }
 
-                Spacer()
-
-                AsyncImage(url: thumbnail.url) { phase in
-                    switch phase {
-                    case .empty:
-                        ProgressView()
-                            .tint(.white)
-                            .scaleEffect(1.5)
-                    case .success(let image):
-                        image
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .cornerRadius(12)
-                            .padding(.horizontal, 16)
-                    case .failure:
-                        VStack(spacing: 12) {
-                            Image(systemName: "photo")
-                                .font(.system(size: 48))
-                                .foregroundColor(.white.opacity(0.5))
-                            Text("Failed to load")
-                                .foregroundColor(.white.opacity(0.7))
+                // Swipeable photo viewer
+                TabView(selection: Binding(
+                    get: { selectedPhotoIndex ?? 0 },
+                    set: { selectedPhotoIndex = $0 }
+                )) {
+                    ForEach(Array(viewModel.thumbnails.prefix(3).enumerated()), id: \.element.id) { index, thumbnail in
+                        AsyncImage(url: thumbnail.url) { phase in
+                            switch phase {
+                            case .empty:
+                                ProgressView()
+                                    .tint(.white)
+                                    .scaleEffect(1.5)
+                            case .success(let image):
+                                image
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fit)
+                                    .cornerRadius(12)
+                                    .padding(.horizontal, 16)
+                            case .failure:
+                                VStack(spacing: 12) {
+                                    Image(systemName: "photo")
+                                        .font(.system(size: 48))
+                                        .foregroundColor(.white.opacity(0.5))
+                                    Text("Failed to load")
+                                        .foregroundColor(.white.opacity(0.7))
+                                }
+                            @unknown default:
+                                EmptyView()
+                            }
                         }
-                    @unknown default:
-                        EmptyView()
+                        .tag(index)
                     }
                 }
+                .tabViewStyle(.page(indexDisplayMode: .automatic))
 
-                Spacer()
-
+                // Footer
                 Text("Get the app to save photos")
                     .font(.system(size: 14))
                     .foregroundColor(.white.opacity(0.6))

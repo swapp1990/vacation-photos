@@ -28,6 +28,16 @@ node scripts/check-versions.js --fix
 
 **DO NOT** rely on EAS auto-increment - it's disabled because it causes App Clip version mismatches.
 
+### Testing App Clip in Simulator
+1. Run `pod install` in `ios/` directory (generates workspace)
+2. Open `ios/VacationPhotos.xcworkspace`
+3. Select `VacationPhotosClip` scheme
+4. Edit Scheme → Run → Arguments → Environment Variables, add:
+   - `_XCAppClipURL` = `https://appclip.apple.com/id?p=BUNDLE_ID&token=SHARE_ID&location=LOCATION_NAME`
+5. Run on simulator (⌘R)
+
+**App Clip URL format:** `https://appclip.apple.com/id?p={bundleId}&token={shareId}&location={locationName}`
+
 ## iOS Development Best Practices
 
 ### Safe Area Handling (CRITICAL)
