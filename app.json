@@ -16,7 +16,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.swapp1990.vacationphotos",
-      "buildNumber": "21",
+      "buildNumber": "22",
       "associatedDomains": [
         "applinks:swapp1990.github.io",
         "appclips:swapp1990.github.io"

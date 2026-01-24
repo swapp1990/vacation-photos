@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct SharedVacationView: View {
     @ObservedObject var viewModel: SharedVacationViewModel
@@ -35,11 +36,16 @@ struct SharedVacationView: View {
             case .loaded:
                 landingView
             }
-
-            // Fullscreen image viewer overlay
-            if selectedPhotoIndex != nil {
-                imageViewerOverlay
-            }
+        }
+        .fullScreenCover(item: Binding(
+            get: { selectedPhotoIndex.map { PhotoViewerItem(index: $0) } },
+            set: { selectedPhotoIndex = $0?.index }
+        )) { item in
+            PhotoViewerModal(
+                thumbnails: viewModel.thumbnails,
+                selectedIndex: item.index,
+                onDismiss: { selectedPhotoIndex = nil }
+            )
         }
     }
 
@@ -195,87 +201,6 @@ struct SharedVacationView: View {
         .padding(.bottom, 48)
     }
 
-    // MARK: - Image Viewer Overlay
-
-    private var imageViewerOverlay: some View {
-        ZStack {
-            Color.black.opacity(0.95)
-                .ignoresSafeArea()
-
-            // Swipeable photo viewer
-            imageViewerTabView
-
-            // Close button overlay (always on top, respects safe area)
-            imageViewerControls
-        }
-        .transition(.opacity)
-    }
-
-    private var imageViewerTabView: some View {
-        TabView(selection: Binding(
-            get: { selectedPhotoIndex ?? 0 },
-            set: { selectedPhotoIndex = $0 }
-        )) {
-            ForEach(Array(viewModel.thumbnails.prefix(3).enumerated()), id: \.element.id) { index, thumbnail in
-                AsyncImage(url: thumbnail.url) { phase in
-                    switch phase {
-                    case .empty:
-                        ProgressView()
-                            .tint(.white)
-                            .scaleEffect(1.5)
-                    case .success(let image):
-                        image
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .cornerRadius(12)
-                            .padding(.horizontal, 16)
-                    case .failure:
-                        VStack(spacing: 12) {
-                            Image(systemName: "photo")
-                                .font(.system(size: 48))
-                                .foregroundColor(.white.opacity(0.5))
-                            Text("Failed to load")
-                                .foregroundColor(.white.opacity(0.7))
-                        }
-                    @unknown default:
-                        EmptyView()
-                    }
-                }
-                .tag(index)
-            }
-        }
-        .tabViewStyle(.page(indexDisplayMode: .automatic))
-    }
-
-    private var imageViewerControls: some View {
-        VStack {
-            HStack {
-                Spacer()
-                Button(action: {
-                    withAnimation(.easeOut(duration: 0.2)) {
-                        selectedPhotoIndex = nil
-                    }
-                }) {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 36))
-                        .foregroundStyle(.white, .black.opacity(0.6))
-                        .shadow(color: .black.opacity(0.5), radius: 4)
-                }
-                .padding(.trailing, 16)
-            }
-            .padding(.top, 16)
-
-            Spacer()
-
-            // Footer
-            Text("Get the app to save photos")
-                .font(.system(size: 14))
-                .foregroundColor(.white.opacity(0.6))
-                .padding(.bottom, 30)
-        }
-        .safeAreaInset(edge: .top) { Color.clear.frame(height: 0) }
-    }
-
     private func openAppStore() {
         // Save context to App Groups for main app handoff
         saveAppClipContext()
@@ -321,6 +246,104 @@ struct SharedVacationView: View {
         .padding(.vertical, 6)
         .background(Color.red.opacity(0.9))
         .cornerRadius(6)
+    }
+}
+
+// MARK: - Photo Viewer Item (for fullScreenCover)
+
+struct PhotoViewerItem: Identifiable {
+    let index: Int
+    var id: Int { index }
+}
+
+// MARK: - Photo Viewer Modal
+
+struct PhotoViewerModal: View {
+    let thumbnails: [ThumbnailPhoto]
+    let selectedIndex: Int
+    let onDismiss: () -> Void
+
+    @State private var currentIndex: Int
+
+    init(thumbnails: [ThumbnailPhoto], selectedIndex: Int, onDismiss: @escaping () -> Void) {
+        self.thumbnails = thumbnails
+        self.selectedIndex = selectedIndex
+        self.onDismiss = onDismiss
+        self._currentIndex = State(initialValue: selectedIndex)
+    }
+
+    var body: some View {
+        ZStack {
+            Color.black.ignoresSafeArea()
+
+            VStack(spacing: 0) {
+                // Close button at top
+                HStack {
+                    Spacer()
+                    Button(action: onDismiss) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 36))
+                            .foregroundStyle(.white, .black.opacity(0.6))
+                            .shadow(color: .black.opacity(0.5), radius: 4)
+                    }
+                    .padding(.trailing, 20)
+                    .padding(.top, 10)
+                }
+
+                Spacer()
+
+                // Swipeable photos
+                TabView(selection: $currentIndex) {
+                    ForEach(Array(thumbnails.prefix(3).enumerated()), id: \.element.id) { index, thumbnail in
+                        AsyncImage(url: thumbnail.url) { phase in
+                            switch phase {
+                            case .empty:
+                                ProgressView()
+                                    .tint(.white)
+                                    .scaleEffect(1.5)
+                            case .success(let image):
+                                image
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fit)
+                                    .cornerRadius(12)
+                                    .padding(.horizontal, 16)
+                            case .failure:
+                                VStack(spacing: 12) {
+                                    Image(systemName: "photo")
+                                        .font(.system(size: 48))
+                                        .foregroundColor(.white.opacity(0.5))
+                                    Text("Failed to load")
+                                        .foregroundColor(.white.opacity(0.7))
+                                }
+                            @unknown default:
+                                EmptyView()
+                            }
+                        }
+                        .tag(index)
+                    }
+                }
+                .tabViewStyle(.page(indexDisplayMode: .never))
+                .frame(height: UIScreen.main.bounds.height * 0.6)
+
+                // Footer text
+                Text("Get the app to save photos")
+                    .font(.system(size: 14))
+                    .foregroundColor(.white.opacity(0.6))
+                    .padding(.top, 16)
+
+                // Custom page dots
+                HStack(spacing: 8) {
+                    ForEach(0..<min(thumbnails.count, 3), id: \.self) { index in
+                        Circle()
+                            .fill(index == currentIndex ? Color.white : Color.white.opacity(0.4))
+                            .frame(width: 8, height: 8)
+                    }
+                }
+                .padding(.top, 12)
+
+                Spacer()
+            }
+        }
     }
 }
 

@@ -42,9 +42,43 @@ struct CloudKitWebService {
         }
     }
 
+    // MARK: - Mock Data for Simulator Testing
+
+    private static func isMockMode(shareId: String) -> Bool {
+        // Use mock data for test IDs or when running in simulator
+        #if targetEnvironment(simulator)
+        return true
+        #else
+        return shareId.hasPrefix("test-") || shareId.hasPrefix("mock")
+        #endif
+    }
+
+    private static func mockVacationData(shareId: String) -> SharedVacationData {
+        SharedVacationData(
+            shareId: shareId,
+            locationName: "Malvan Beach",
+            photoCount: 3,
+            sharedBy: "Sarah"
+        )
+    }
+
+    private static func mockPhotoData() -> [PhotoData] {
+        // Unsplash beach photos for testing
+        [
+            PhotoData(orderIndex: 0, downloadURL: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800", width: 800, height: 600),
+            PhotoData(orderIndex: 1, downloadURL: "https://images.unsplash.com/photo-1519046904884-53103b34b206?w=800", width: 800, height: 600),
+            PhotoData(orderIndex: 2, downloadURL: "https://images.unsplash.com/photo-1473116763249-2faaef81ccda?w=800", width: 800, height: 600)
+        ]
+    }
+
     // MARK: - Fetch Shared Vacation
 
     static func fetchSharedVacation(shareId: String) async throws -> SharedVacationData? {
+        // Return mock data in simulator
+        if isMockMode(shareId: shareId) {
+            return mockVacationData(shareId: shareId)
+        }
+
         let url = URL(string: "\(baseURL)/records/lookup")!
 
         let body: [String: Any] = [
@@ -93,6 +127,11 @@ struct CloudKitWebService {
     /// Photo records are named "{shareId}_{orderIndex}" (e.g., "abc123_0", "abc123_1")
     /// This avoids the query endpoint which requires authentication.
     static func fetchPreviewPhotos(shareId: String, limit: Int = 3, photoCount: Int? = nil) async throws -> [PhotoData] {
+        // Return mock photos in simulator
+        if isMockMode(shareId: shareId) {
+            return mockPhotoData()
+        }
+
         let url = URL(string: "\(baseURL)/records/lookup")!
 
         // Determine how many photos to look up
