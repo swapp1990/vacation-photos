@@ -53,18 +53,75 @@ function extractAppClipVersions(pbxprojContent) {
   return versions;
 }
 
+function extractMarketingVersions(pbxprojContent) {
+  // Extract all MARKETING_VERSION values
+  const versions = [];
+  const lines = pbxprojContent.split('\n');
+
+  for (const line of lines) {
+    const match = line.match(/MARKETING_VERSION = ([^;]+);/);
+    if (match) {
+      versions.push(match[1].trim());
+    }
+  }
+
+  return [...new Set(versions)]; // Return unique values
+}
+
+function fixMarketingVersion(targetVersion) {
+  const pbxprojPath = path.join(projectRoot, 'ios/VacationPhotos.xcodeproj/project.pbxproj');
+  let content = fs.readFileSync(pbxprojPath, 'utf8');
+  content = content.replace(/MARKETING_VERSION = [^;]+;/g, `MARKETING_VERSION = ${targetVersion};`);
+  fs.writeFileSync(pbxprojPath, content);
+}
+
 function readMainAppInfoPlist() {
   const plistPath = path.join(projectRoot, 'ios/VacationPhotos/Info.plist');
   const content = fs.readFileSync(plistPath, 'utf8');
   const versionMatch = content.match(/<key>CFBundleVersion<\/key>\s*<string>(\d+)<\/string>/);
-  return versionMatch ? versionMatch[1] : null;
+  const shortVersionMatch = content.match(/<key>CFBundleShortVersionString<\/key>\s*<string>([^<]+)<\/string>/);
+  return {
+    buildNumber: versionMatch ? versionMatch[1] : null,
+    version: shortVersionMatch ? shortVersionMatch[1] : null
+  };
 }
 
-function fixMainAppInfoPlist(targetVersion) {
+function readAppClipInfoPlist() {
+  const plistPath = path.join(projectRoot, 'ios/VacationPhotosClip/Info.plist');
+  if (!fs.existsSync(plistPath)) return null;
+  const content = fs.readFileSync(plistPath, 'utf8');
+  const versionMatch = content.match(/<key>CFBundleVersion<\/key>\s*<string>(\d+)<\/string>/);
+  const shortVersionMatch = content.match(/<key>CFBundleShortVersionString<\/key>\s*<string>([^<]+)<\/string>/);
+  return {
+    buildNumber: versionMatch ? versionMatch[1] : null,
+    version: shortVersionMatch ? shortVersionMatch[1] : null
+  };
+}
+
+function fixMainAppInfoPlist(targetVersion, targetBuildNumber) {
   const plistPath = path.join(projectRoot, 'ios/VacationPhotos/Info.plist');
   let content = fs.readFileSync(plistPath, 'utf8');
   content = content.replace(
     /(<key>CFBundleVersion<\/key>\s*<string>)\d+(<\/string>)/,
+    `$1${targetBuildNumber}$2`
+  );
+  content = content.replace(
+    /(<key>CFBundleShortVersionString<\/key>\s*<string>)[^<]+(<\/string>)/,
+    `$1${targetVersion}$2`
+  );
+  fs.writeFileSync(plistPath, content);
+}
+
+function fixAppClipInfoPlist(targetVersion, targetBuildNumber) {
+  const plistPath = path.join(projectRoot, 'ios/VacationPhotosClip/Info.plist');
+  if (!fs.existsSync(plistPath)) return;
+  let content = fs.readFileSync(plistPath, 'utf8');
+  content = content.replace(
+    /(<key>CFBundleVersion<\/key>\s*<string>)\d+(<\/string>)/,
+    `$1${targetBuildNumber}$2`
+  );
+  content = content.replace(
+    /(<key>CFBundleShortVersionString<\/key>\s*<string>)[^<]+(<\/string>)/,
     `$1${targetVersion}$2`
   );
   fs.writeFileSync(plistPath, content);
@@ -86,12 +143,26 @@ function main() {
   console.log('');
 
   // Check main app Info.plist
-  const mainAppPlistVersion = readMainAppInfoPlist();
-  const mainAppMatch = mainAppPlistVersion === mainAppBuildNumber;
+  const mainAppPlist = readMainAppInfoPlist();
+  const mainAppBuildMatch = mainAppPlist.buildNumber === mainAppBuildNumber;
+  const mainAppVersionMatch = mainAppPlist.version === mainAppVersion;
   console.log('📄 Main App (Info.plist):');
-  console.log(`   CFBundleVersion: ${mainAppPlistVersion} ${mainAppMatch ? '✅' : '❌'}`);
-  if (!mainAppMatch) hasError = true;
+  console.log(`   CFBundleShortVersionString: ${mainAppPlist.version} ${mainAppVersionMatch ? '✅' : '❌'}`);
+  console.log(`   CFBundleVersion: ${mainAppPlist.buildNumber} ${mainAppBuildMatch ? '✅' : '❌'}`);
+  if (!mainAppBuildMatch || !mainAppVersionMatch) hasError = true;
   console.log('');
+
+  // Check App Clip Info.plist
+  const appClipPlist = readAppClipInfoPlist();
+  if (appClipPlist) {
+    const appClipBuildMatch = appClipPlist.buildNumber === mainAppBuildNumber;
+    const appClipVersionMatch = appClipPlist.version === mainAppVersion;
+    console.log('📎 App Clip (Info.plist):');
+    console.log(`   CFBundleShortVersionString: ${appClipPlist.version} ${appClipVersionMatch ? '✅' : '❌'}`);
+    console.log(`   CFBundleVersion: ${appClipPlist.buildNumber} ${appClipBuildMatch ? '✅' : '❌'}`);
+    if (!appClipBuildMatch || !appClipVersionMatch) hasError = true;
+    console.log('');
+  }
 
   // Read project.pbxproj
   const pbxprojContent = readProjectPbxproj();
@@ -106,6 +177,17 @@ function main() {
   }
   console.log('');
 
+  // Check MARKETING_VERSION in project.pbxproj
+  const marketingVersions = extractMarketingVersions(pbxprojContent);
+  console.log('📋 MARKETING_VERSION (project.pbxproj):');
+  for (const version of marketingVersions) {
+    const match = version === mainAppVersion;
+    const icon = match ? '✅' : '❌';
+    console.log(`   ${version} ${icon}`);
+    if (!match) hasError = true;
+  }
+  console.log('');
+
   // Summary
   if (hasError) {
     console.log('❌ VERSION MISMATCH DETECTED!');
@@ -113,9 +195,11 @@ function main() {
 
     if (shouldFix) {
       console.log('🔧 Fixing version mismatch...');
-      fixMainAppInfoPlist(mainAppBuildNumber);
+      fixMainAppInfoPlist(mainAppVersion, mainAppBuildNumber);
+      fixAppClipInfoPlist(mainAppVersion, mainAppBuildNumber);
       fixVersionMismatch(mainAppBuildNumber);
-      console.log('✅ Fixed! All versions updated to ' + mainAppBuildNumber);
+      fixMarketingVersion(mainAppVersion);
+      console.log(`✅ Fixed! All versions updated to ${mainAppVersion} (build ${mainAppBuildNumber})`);
       console.log('');
       process.exit(0);
     } else {
