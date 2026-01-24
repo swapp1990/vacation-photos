@@ -129,7 +129,8 @@ export default function LocationSelectionScreen({ onLocationSelected }) {
       );
     }
 
-    if (searchQuery.length >= 2 && searchResults.length === 0) {
+    // Don't show "no results" if a location is already selected
+    if (searchQuery.length >= 2 && searchResults.length === 0 && !selectedLocation) {
       return (
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyText}>

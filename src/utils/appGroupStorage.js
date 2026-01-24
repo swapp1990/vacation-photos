@@ -88,7 +88,7 @@ export async function removeAppGroupData(key) {
 
 /**
  * Check if there's a pending share from App Clip
- * @returns {object|null} Object with shareId and timestamp, or null
+ * @returns {object|null} Object with shareId, context, and timestamp, or null
  */
 export async function getPendingShare() {
   const shareId = await getAppGroupData('pendingShareId');
@@ -111,7 +111,29 @@ export async function getPendingShare() {
     }
   }
 
-  return { shareId, timestamp };
+  // Get additional context saved by App Clip
+  const locationName = await getAppGroupData('pendingShareLocation');
+  const sharedBy = await getAppGroupData('pendingShareSharedBy');
+  const photoCount = await getAppGroupData('pendingSharePhotoCount');
+  const thumbnailsJson = await getAppGroupData('pendingShareThumbnails');
+
+  let thumbnails = [];
+  if (thumbnailsJson) {
+    try {
+      thumbnails = JSON.parse(thumbnailsJson);
+    } catch (e) {
+      console.log('Error parsing thumbnails JSON:', e);
+    }
+  }
+
+  return {
+    shareId,
+    timestamp,
+    locationName,
+    sharedBy,
+    photoCount: photoCount ? parseInt(photoCount, 10) : 0,
+    thumbnails,
+  };
 }
 
 /**
@@ -120,6 +142,10 @@ export async function getPendingShare() {
 export async function clearPendingShare() {
   await removeAppGroupData('pendingShareId');
   await removeAppGroupData('pendingShareTimestamp');
+  await removeAppGroupData('pendingShareLocation');
+  await removeAppGroupData('pendingShareSharedBy');
+  await removeAppGroupData('pendingSharePhotoCount');
+  await removeAppGroupData('pendingShareThumbnails');
 }
 
 export default {

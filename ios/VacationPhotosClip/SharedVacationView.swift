@@ -201,78 +201,109 @@ struct SharedVacationView: View {
         ZStack {
             Color.black.opacity(0.95)
                 .ignoresSafeArea()
-                .onTapGesture {
-                    withAnimation(.easeOut(duration: 0.2)) {
-                        selectedPhotoIndex = nil
-                    }
-                }
 
             // Swipeable photo viewer
-            TabView(selection: Binding(
-                get: { selectedPhotoIndex ?? 0 },
-                set: { selectedPhotoIndex = $0 }
-            )) {
-                ForEach(Array(viewModel.thumbnails.prefix(3).enumerated()), id: \.element.id) { index, thumbnail in
-                    AsyncImage(url: thumbnail.url) { phase in
-                        switch phase {
-                        case .empty:
-                            ProgressView()
-                                .tint(.white)
-                                .scaleEffect(1.5)
-                        case .success(let image):
-                            image
-                                .resizable()
-                                .aspectRatio(contentMode: .fit)
-                                .cornerRadius(12)
-                                .padding(.horizontal, 16)
-                        case .failure:
-                            VStack(spacing: 12) {
-                                Image(systemName: "photo")
-                                    .font(.system(size: 48))
-                                    .foregroundColor(.white.opacity(0.5))
-                                Text("Failed to load")
-                                    .foregroundColor(.white.opacity(0.7))
-                            }
-                        @unknown default:
-                            EmptyView()
-                        }
-                    }
-                    .tag(index)
-                }
-            }
-            .tabViewStyle(.page(indexDisplayMode: .automatic))
+            imageViewerTabView
 
-            // Close button overlay (always on top)
-            VStack {
-                HStack {
-                    Spacer()
-                    Button(action: {
-                        withAnimation(.easeOut(duration: 0.2)) {
-                            selectedPhotoIndex = nil
-                        }
-                    }) {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 32))
-                            .foregroundColor(.white)
-                            .shadow(color: .black.opacity(0.5), radius: 4)
-                    }
-                    .padding(.top, 60)
-                    .padding(.trailing, 20)
-                }
-                Spacer()
-
-                // Footer
-                Text("Get the app to save photos")
-                    .font(.system(size: 14))
-                    .foregroundColor(.white.opacity(0.6))
-                    .padding(.bottom, 50)
-            }
+            // Close button overlay (always on top, respects safe area)
+            imageViewerControls
         }
         .transition(.opacity)
     }
 
+    private var imageViewerTabView: some View {
+        TabView(selection: Binding(
+            get: { selectedPhotoIndex ?? 0 },
+            set: { selectedPhotoIndex = $0 }
+        )) {
+            ForEach(Array(viewModel.thumbnails.prefix(3).enumerated()), id: \.element.id) { index, thumbnail in
+                AsyncImage(url: thumbnail.url) { phase in
+                    switch phase {
+                    case .empty:
+                        ProgressView()
+                            .tint(.white)
+                            .scaleEffect(1.5)
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .cornerRadius(12)
+                            .padding(.horizontal, 16)
+                    case .failure:
+                        VStack(spacing: 12) {
+                            Image(systemName: "photo")
+                                .font(.system(size: 48))
+                                .foregroundColor(.white.opacity(0.5))
+                            Text("Failed to load")
+                                .foregroundColor(.white.opacity(0.7))
+                        }
+                    @unknown default:
+                        EmptyView()
+                    }
+                }
+                .tag(index)
+            }
+        }
+        .tabViewStyle(.page(indexDisplayMode: .automatic))
+    }
+
+    private var imageViewerControls: some View {
+        VStack {
+            HStack {
+                Spacer()
+                Button(action: {
+                    withAnimation(.easeOut(duration: 0.2)) {
+                        selectedPhotoIndex = nil
+                    }
+                }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 36))
+                        .foregroundStyle(.white, .black.opacity(0.6))
+                        .shadow(color: .black.opacity(0.5), radius: 4)
+                }
+                .padding(.trailing, 16)
+            }
+            .padding(.top, 16)
+
+            Spacer()
+
+            // Footer
+            Text("Get the app to save photos")
+                .font(.system(size: 14))
+                .foregroundColor(.white.opacity(0.6))
+                .padding(.bottom, 30)
+        }
+        .safeAreaInset(edge: .top) { Color.clear.frame(height: 0) }
+    }
+
     private func openAppStore() {
+        // Save context to App Groups for main app handoff
+        saveAppClipContext()
         UIApplication.shared.open(viewModel.appStoreURL)
+    }
+
+    private func saveAppClipContext() {
+        guard let defaults = UserDefaults(suiteName: "group.com.swapp1990.vacationphotos") else {
+            return
+        }
+
+        // Save vacation context for main app
+        if let vacation = viewModel.vacation {
+            defaults.set(vacation.shareId, forKey: "pendingShareId")
+            defaults.set(vacation.locationName, forKey: "pendingShareLocation")
+            defaults.set(vacation.sharedBy, forKey: "pendingShareSharedBy")
+            defaults.set(vacation.photoCount, forKey: "pendingSharePhotoCount")
+            defaults.set(String(Int(Date().timeIntervalSince1970 * 1000)), forKey: "pendingShareTimestamp")
+
+            // Save thumbnail URLs as JSON array
+            let thumbnailURLs = viewModel.thumbnails.prefix(3).compactMap { $0.url.absoluteString }
+            if let jsonData = try? JSONSerialization.data(withJSONObject: thumbnailURLs),
+               let jsonString = String(data: jsonData, encoding: .utf8) {
+                defaults.set(jsonString, forKey: "pendingShareThumbnails")
+            }
+
+            defaults.synchronize()
+        }
     }
 
     // MARK: - Error Banner

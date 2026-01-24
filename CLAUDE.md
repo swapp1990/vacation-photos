@@ -40,6 +40,35 @@ node scripts/check-versions.js --fix
 
 ## iOS Development Best Practices
 
+### SwiftUI Type-Checking (CRITICAL)
+- **NEVER** create deeply nested SwiftUI views in a single computed property
+- **ALWAYS** break complex views into smaller sub-properties/methods
+- The Swift compiler will fail with "unable to type-check this expression" if a view body is too complex
+- GeometryReader, ForEach with enumerated(), and AsyncImage are especially prone to this
+- Extract TabView contents, overlay controls, and nested closures into separate computed properties
+
+```swift
+// BAD - compiler will fail
+var body: some View {
+    GeometryReader { geo in
+        ZStack {
+            TabView { ForEach(...) { AsyncImage { ... } } }
+            VStack { Button { ... } }
+        }
+    }
+}
+
+// GOOD - broken into sub-properties
+var body: some View {
+    ZStack {
+        tabViewContent
+        controlsOverlay
+    }
+}
+private var tabViewContent: some View { ... }
+private var controlsOverlay: some View { ... }
+```
+
 ### Safe Area Handling (CRITICAL)
 - **ALWAYS** wrap screens with `SafeAreaProvider` and `SafeAreaView` from `react-native-safe-area-context`
 - **NEVER** use absolute positioning with fixed `top` values for UI elements near screen edges

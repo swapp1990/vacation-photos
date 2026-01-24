@@ -15,6 +15,7 @@ import {
   Modal,
   TextInput,
   Animated,
+  Alert,
 } from 'react-native';
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
 import * as MediaLibrary from 'expo-media-library';
@@ -65,6 +66,19 @@ import {
 
 // Debug mode - set to false for production
 const DEBUG_MODE = __DEV__;
+
+// Mock data for testing App Clip handoff flow
+const MOCK_APP_CLIP_CONTEXT = {
+  shareId: 'test-share-debug-123',
+  locationName: 'Hawaii Beach Trip',
+  sharedBy: 'Sarah',
+  photoCount: 12,
+  thumbnails: [
+    'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=400',
+    'https://images.unsplash.com/photo-1519046904884-53103b34b206?w=400',
+    'https://images.unsplash.com/photo-1476673160081-cf065607f449?w=400',
+  ],
+};
 
 const { width } = Dimensions.get('window');
 
@@ -234,7 +248,13 @@ export default function App() {
 
   // App Clip handoff state
   const [pendingAppClipShare, setPendingAppClipShare] = useState(null);
+  const [appClipContext, setAppClipContext] = useState(null); // Full context from App Clip
   const [showAppClipPrompt, setShowAppClipPrompt] = useState(false);
+
+  // Debug menu state (DEV only)
+  const [showDebugMenu, setShowDebugMenu] = useState(false);
+  const debugTapCount = useRef(0);
+  const debugTapTimer = useRef(null);
 
   // Animation refs for collapsible header
   const scrollY = useRef(new Animated.Value(0)).current;
@@ -253,20 +273,34 @@ export default function App() {
     initializeApp();
   }, []);
 
-  // Check for pending share from App Clip
+  // Check for pending share from App Clip (or debug context)
   useEffect(() => {
     const checkPendingShare = async () => {
       try {
+        // First check for real App Clip context from App Groups
         const pending = await getPendingShare();
         if (pending && pending.shareId) {
           console.log('[App] Found pending share from App Clip:', pending.shareId);
+          console.log('[App] Context:', pending.locationName, pending.sharedBy, pending.thumbnails?.length);
           setPendingAppClipShare(pending.shareId);
-          // Immediately show the shared vacation
-          setSharedVacationId(pending.shareId);
-          // Clear the pending share
-          await clearPendingShare();
-          // After they view it, we'll prompt them to continue
-          setShowAppClipPrompt(true);
+          // Store full context for contextual onboarding
+          setAppClipContext(pending);
+          // Note: Don't show shared vacation immediately if onboarding is needed
+          // The contextual onboarding will handle the flow
+          return;
+        }
+
+        // DEV only: Check for debug context in AsyncStorage
+        if (DEBUG_MODE) {
+          const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+          const debugContext = await AsyncStorage.getItem('debug_app_clip_context');
+          if (debugContext) {
+            console.log('[App] Found DEBUG App Clip context');
+            const parsed = JSON.parse(debugContext);
+            setAppClipContext(parsed);
+            // Clear it so it only triggers once
+            await AsyncStorage.removeItem('debug_app_clip_context');
+          }
         }
       } catch (error) {
         console.log('[App] Error checking pending share:', error);
@@ -275,6 +309,19 @@ export default function App() {
 
     checkPendingShare();
   }, []);
+
+  // Show shared vacation after onboarding completes (App Clip handoff)
+  useEffect(() => {
+    // Only trigger when onboarding is complete and we have a pending share
+    if (showOnboarding === false && !showLocationSelection && pendingAppClipShare && hasPermission === true) {
+      console.log('[App] Onboarding complete, showing shared vacation:', pendingAppClipShare);
+      setSharedVacationId(pendingAppClipShare);
+      setShowAppClipPrompt(true);
+      // Clear so we don't show again
+      setPendingAppClipShare(null);
+      setAppClipContext(null);
+    }
+  }, [showOnboarding, showLocationSelection, pendingAppClipShare, hasPermission]);
 
   // Apply edited locations when they're loaded and clusters exist
   useEffect(() => {
@@ -297,6 +344,75 @@ export default function App() {
   const handleLocationSelected = useCallback((location) => {
     photoLoadingLocationSelected(location, initializeApp);
   }, [photoLoadingLocationSelected, initializeApp]);
+
+  // Debug: Triple-tap handler to open debug menu (DEV only)
+  const handleDebugTap = useCallback(() => {
+    if (!DEBUG_MODE) return;
+
+    debugTapCount.current += 1;
+
+    if (debugTapTimer.current) {
+      clearTimeout(debugTapTimer.current);
+    }
+
+    if (debugTapCount.current >= 3) {
+      debugTapCount.current = 0;
+      setShowDebugMenu(true);
+    } else {
+      debugTapTimer.current = setTimeout(() => {
+        debugTapCount.current = 0;
+      }, 500);
+    }
+  }, []);
+
+  // Debug: Simulate App Clip handoff flow
+  const handleDebugSimulateAppClip = useCallback(async () => {
+    setShowDebugMenu(false);
+
+    // Clear any existing onboarding state
+    const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+    await AsyncStorage.removeItem('onboarding_complete');
+
+    // Set the mock App Clip context
+    setAppClipContext(MOCK_APP_CLIP_CONTEXT);
+    setPendingAppClipShare(null); // Will be set after onboarding
+
+    // Reset to show onboarding
+    photoLoading.resetOnboarding && photoLoading.resetOnboarding();
+
+    // Force reload by setting showOnboarding directly via hook
+    // We need to trigger a re-check of onboarding status
+    Alert.alert(
+      'Debug: App Clip Simulation',
+      'App Clip context set. Please close the app completely and reopen to see the contextual onboarding flow.',
+      [{ text: 'OK' }]
+    );
+  }, []);
+
+  // Debug: Quick test - show shared vacation viewer directly
+  const handleDebugShowViewer = useCallback(() => {
+    setShowDebugMenu(false);
+    setSharedVacationId(MOCK_APP_CLIP_CONTEXT.shareId);
+    setShowAppClipPrompt(true);
+  }, []);
+
+  // Debug: Set App Clip context without restarting (for testing contextual onboarding)
+  const handleDebugSetContext = useCallback(async () => {
+    setShowDebugMenu(false);
+
+    // Clear onboarding state
+    const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+    await AsyncStorage.removeItem('onboarding_complete');
+
+    // Save mock context to AsyncStorage so it persists across restart
+    await AsyncStorage.setItem('debug_app_clip_context', JSON.stringify(MOCK_APP_CLIP_CONTEXT));
+
+    Alert.alert(
+      'Debug: Context Set',
+      'App Clip context is set. Close the app completely and reopen to see the contextual onboarding.',
+      [{ text: 'OK' }]
+    );
+  }, []);
 
   // Handle card tap - open the list or viewer
   const handleSharedVacationsCardPress = useCallback(() => {
@@ -534,15 +650,82 @@ export default function App() {
   }
 
   if (showOnboarding === true) {
+    // Contextual onboarding when coming from App Clip
+    if (appClipContext && appClipContext.shareId) {
+      return (
+        <SafeAreaProvider>
+          <View style={styles.onboardingContainer}>
+            <StatusBar style="light" />
+            <Image
+              source={require('./assets/vacation-splash.png')}
+              style={styles.onboardingBackground}
+              resizeMode="cover"
+            />
+            <View style={styles.appClipOnboardingOverlay}>
+              <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
+                <View style={styles.appClipOnboardingContent}>
+                  {/* Thumbnails from App Clip */}
+                  {appClipContext.thumbnails && appClipContext.thumbnails.length > 0 && (
+                    <View style={styles.appClipThumbnailsRow}>
+                      {appClipContext.thumbnails.slice(0, 3).map((url, index) => (
+                        <Image
+                          key={index}
+                          source={{ uri: url }}
+                          style={styles.appClipThumbnail}
+                          resizeMode="cover"
+                        />
+                      ))}
+                    </View>
+                  )}
+
+                  {/* Location name */}
+                  {appClipContext.locationName && (
+                    <Text style={styles.appClipLocationText}>
+                      {appClipContext.locationName}
+                    </Text>
+                  )}
+
+                  {/* Contextual tagline */}
+                  <Text style={styles.appClipTagline}>
+                    <Text style={styles.appClipSharedByText}>{appClipContext.sharedBy || 'A friend'}</Text>
+                    {' shared a vacation with you!'}
+                  </Text>
+
+                  <Text style={styles.appClipSubtext}>
+                    Let's get you set up so you can view and save these photos.
+                  </Text>
+
+                  <TouchableOpacity
+                    style={styles.onboardingButton}
+                    onPress={async () => {
+                      await clearPendingShare();
+                      // Store shareId to show after onboarding
+                      setPendingAppClipShare(appClipContext.shareId);
+                      handleGetStarted();
+                    }}
+                  >
+                    <Text style={styles.onboardingButtonText}>Get Started</Text>
+                  </TouchableOpacity>
+                </View>
+              </SafeAreaView>
+            </View>
+          </View>
+        </SafeAreaProvider>
+      );
+    }
+
+    // Default onboarding (no App Clip context)
     return (
       <SafeAreaProvider>
         <View style={styles.onboardingContainer}>
           <StatusBar style="light" />
-          <Image
-            source={require('./assets/vacation-splash.png')}
-            style={styles.onboardingBackground}
-            resizeMode="cover"
-          />
+          <TouchableOpacity activeOpacity={1} onPress={handleDebugTap}>
+            <Image
+              source={require('./assets/vacation-splash.png')}
+              style={styles.onboardingBackground}
+              resizeMode="cover"
+            />
+          </TouchableOpacity>
           <SafeAreaView style={styles.onboardingOverlay} edges={['bottom']}>
             <View style={styles.onboardingBottom}>
               <Text style={styles.onboardingTagline}>
@@ -558,6 +741,76 @@ export default function App() {
               </TouchableOpacity>
             </View>
           </SafeAreaView>
+
+          {/* Debug Menu (DEV only) - Triple-tap image to open */}
+          {DEBUG_MODE && (
+            <Modal
+              visible={showDebugMenu}
+              transparent
+              animationType="fade"
+              onRequestClose={() => setShowDebugMenu(false)}
+            >
+              <TouchableOpacity
+                style={{
+                  flex: 1,
+                  backgroundColor: 'rgba(0,0,0,0.5)',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                }}
+                activeOpacity={1}
+                onPress={() => setShowDebugMenu(false)}
+              >
+                <View style={{
+                  backgroundColor: '#fff',
+                  borderRadius: 16,
+                  padding: 24,
+                  width: '85%',
+                  maxWidth: 340,
+                }}>
+                  <Text style={{ fontSize: 20, fontWeight: '700', marginBottom: 4, textAlign: 'center' }}>
+                    🛠 Debug Menu
+                  </Text>
+                  <Text style={{ fontSize: 14, color: '#666', marginBottom: 20, textAlign: 'center' }}>
+                    App Clip Handoff Testing
+                  </Text>
+
+                  <TouchableOpacity
+                    style={{
+                      backgroundColor: '#6366F1',
+                      padding: 16,
+                      borderRadius: 12,
+                      marginBottom: 12,
+                    }}
+                    onPress={() => {
+                      setShowDebugMenu(false);
+                      // Directly set the mock context to show contextual onboarding
+                      setAppClipContext(MOCK_APP_CLIP_CONTEXT);
+                    }}
+                  >
+                    <Text style={{ color: '#fff', fontWeight: '600', fontSize: 16 }}>
+                      Show App Clip Onboarding
+                    </Text>
+                    <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12, marginTop: 4 }}>
+                      Instantly shows contextual onboarding with thumbnails
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={{
+                      backgroundColor: '#f0f0f0',
+                      padding: 16,
+                      borderRadius: 12,
+                    }}
+                    onPress={() => setShowDebugMenu(false)}
+                  >
+                    <Text style={{ color: '#333', fontWeight: '600', fontSize: 16, textAlign: 'center' }}>
+                      Cancel
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </TouchableOpacity>
+            </Modal>
+          )}
         </View>
       </SafeAreaProvider>
     );
@@ -678,10 +931,25 @@ export default function App() {
 
   // Shared vacation viewer - show photos shared via deep link
   if (sharedVacationId) {
+    // Check if we're in App Clip handoff mode (scanning in background)
+    const isAppClipMode = showAppClipPrompt && loading;
+    const scanningComplete = showAppClipPrompt && !loading && clusters.length > 0;
+
     return (
       <SharedVacationViewer
         shareId={sharedVacationId}
-        onClose={() => setSharedVacationId(null)}
+        onClose={() => {
+          setSharedVacationId(null);
+          setShowAppClipPrompt(false);
+        }}
+        // Pass scanning progress for App Clip handoff
+        scanningProgress={isAppClipMode ? {
+          current: 0,
+          total: 100,
+          percent: loadingPercent || 0,
+        } : null}
+        scanningComplete={scanningComplete}
+        vacationsFound={clusters.length}
       />
     );
   }
@@ -991,14 +1259,13 @@ export default function App() {
               </View>
             )}
             <ActivityIndicator size="large" color="#6366F1" style={{ marginTop: recentPhotos.length > 0 ? 12 : 0 }} />
-            <Text style={styles.splashLoadingText}>{loadingProgress}</Text>
+            <Text style={styles.splashLoadingText}>
+              {loadingProgress}{loadingPercent > 0 ? ` · ${loadingPercent}%` : ''}
+            </Text>
             {loadingPercent > 0 && (
-              <>
-                <View style={styles.progressBarContainer}>
-                  <View style={[styles.progressBarFill, { width: `${loadingPercent}%` }]} />
-                </View>
-                <Text style={styles.progressPercent}>{loadingPercent}%</Text>
-              </>
+              <View style={styles.progressBarContainer}>
+                <View style={[styles.progressBarFill, { width: `${loadingPercent}%` }]} />
+              </View>
             )}
           </View>
         </View>
@@ -1028,11 +1295,13 @@ export default function App() {
         <StatusBar style="auto" />
 
         <View style={styles.header}>
-          <Image
-            source={require('./assets/app-logo-transparent.png')}
-            style={styles.headerLogo}
-            resizeMode="contain"
-          />
+          <TouchableOpacity onPress={handleDebugTap} activeOpacity={1}>
+            <Image
+              source={require('./assets/app-logo-transparent.png')}
+              style={styles.headerLogo}
+              resizeMode="contain"
+            />
+          </TouchableOpacity>
           <View style={styles.headerLeft}>
             <Text style={styles.headerTitle}>Vacation Photos</Text>
             <Text style={styles.headerSubtitle}>
@@ -1112,6 +1381,89 @@ export default function App() {
             )
           }
         />
+
+        {/* Debug Menu (DEV only) - Triple-tap logo to open */}
+        {DEBUG_MODE && (
+          <Modal
+            visible={showDebugMenu}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setShowDebugMenu(false)}
+          >
+            <TouchableOpacity
+              style={{
+                flex: 1,
+                backgroundColor: 'rgba(0,0,0,0.5)',
+                justifyContent: 'center',
+                alignItems: 'center',
+              }}
+              activeOpacity={1}
+              onPress={() => setShowDebugMenu(false)}
+            >
+              <View style={{
+                backgroundColor: '#fff',
+                borderRadius: 16,
+                padding: 24,
+                width: '85%',
+                maxWidth: 340,
+              }}>
+                <Text style={{ fontSize: 20, fontWeight: '700', marginBottom: 4, textAlign: 'center' }}>
+                  🛠 Debug Menu
+                </Text>
+                <Text style={{ fontSize: 14, color: '#666', marginBottom: 20, textAlign: 'center' }}>
+                  App Clip Handoff Testing
+                </Text>
+
+                <TouchableOpacity
+                  style={{
+                    backgroundColor: '#6366F1',
+                    padding: 16,
+                    borderRadius: 12,
+                    marginBottom: 12,
+                  }}
+                  onPress={handleDebugSetContext}
+                >
+                  <Text style={{ color: '#fff', fontWeight: '600', fontSize: 16 }}>
+                    Set App Clip Context
+                  </Text>
+                  <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12, marginTop: 4 }}>
+                    Sets mock context, restart app to see onboarding
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={{
+                    backgroundColor: '#6366F1',
+                    padding: 16,
+                    borderRadius: 12,
+                    marginBottom: 12,
+                  }}
+                  onPress={handleDebugShowViewer}
+                >
+                  <Text style={{ color: '#fff', fontWeight: '600', fontSize: 16 }}>
+                    Show Shared Vacation Viewer
+                  </Text>
+                  <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12, marginTop: 4 }}>
+                    Opens viewer with scanning status bar
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={{
+                    backgroundColor: '#f0f0f0',
+                    padding: 16,
+                    borderRadius: 12,
+                  }}
+                  onPress={() => setShowDebugMenu(false)}
+                >
+                  <Text style={{ color: '#333', fontWeight: '600', fontSize: 16, textAlign: 'center' }}>
+                    Cancel
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableOpacity>
+          </Modal>
+        )}
       </SafeAreaView>
     </SafeAreaProvider>
   );

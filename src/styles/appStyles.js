@@ -854,6 +854,64 @@ export default StyleSheet.create({
     fontSize: 18,
   },
 
+  // App Clip Contextual Onboarding
+  appClipOnboardingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  appClipOnboardingContent: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: spacing.xxl,
+  },
+  appClipThumbnailsRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginBottom: spacing.xl,
+  },
+  appClipThumbnail: {
+    width: (width - spacing.xxl * 2 - spacing.md * 2) / 3,
+    height: (width - spacing.xxl * 2 - spacing.md * 2) / 3,
+    borderRadius: borderRadius.lg,
+    marginHorizontal: spacing.xs,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+  },
+  appClipLocationText: {
+    ...typography.title2,
+    color: '#FFFFFF',
+    textAlign: 'center',
+    marginBottom: spacing.md,
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
+  },
+  appClipTagline: {
+    ...typography.title2,
+    color: '#FFFFFF',
+    textAlign: 'center',
+    marginBottom: spacing.lg,
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
+  },
+  appClipSharedByText: {
+    color: '#66D9EF', // Cyan highlight like App Clip
+    fontWeight: '700',
+  },
+  appClipSubtext: {
+    ...typography.body,
+    color: 'rgba(255, 255, 255, 0.85)',
+    textAlign: 'center',
+    marginBottom: spacing.xxl,
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+
   // Location Edit Modal
   modalContainer: {
     flex: 1,
