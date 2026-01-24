@@ -28,15 +28,47 @@ node scripts/check-versions.js --fix
 
 **DO NOT** rely on EAS auto-increment - it's disabled because it causes App Clip version mismatches.
 
-### Testing App Clip in Simulator
-1. Run `pod install` in `ios/` directory (generates workspace)
-2. Open `ios/VacationPhotos.xcworkspace`
-3. Select `VacationPhotosClip` scheme
-4. Edit Scheme → Run → Arguments → Environment Variables, add:
-   - `_XCAppClipURL` = `https://appclip.apple.com/id?p=BUNDLE_ID&token=SHARE_ID&location=LOCATION_NAME`
-5. Run on simulator (⌘R)
+### Testing App Clip in Simulator (RECOMMENDED: Command Line)
 
-**App Clip URL format:** `https://appclip.apple.com/id?p={bundleId}&token={shareId}&location={locationName}`
+The most reliable way to test the App Clip is via command line (avoids Xcode UI issues):
+
+```bash
+# 1. Install pods (one-time setup)
+cd ios && pod install && cd ..
+
+# 2. Build App Clip for simulator
+xcodebuild -workspace ios/VacationPhotos.xcworkspace \
+  -scheme VacationPhotosClip \
+  -configuration Debug \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
+  -derivedDataPath ios/build build
+
+# 3. Boot simulator and install
+xcrun simctl boot "iPhone 17 Pro"
+xcrun simctl install "iPhone 17 Pro" ios/build/Build/Products/Debug-iphonesimulator/VacationPhotosClip.app
+
+# 4. Launch App Clip
+xcrun simctl launch "iPhone 17 Pro" com.swapp1990.vacationphotos.Clip
+```
+
+**Mock data:** The App Clip automatically uses mock Unsplash photos when running in the simulator (no CloudKit access needed).
+
+### What NOT to do for App Clip Testing
+
+- **DO NOT** rely on TestFlight "Open" button - it may use the production App Clip, not your TestFlight build
+- **DO NOT** try Safari/Messages links for testing - unreliable for development builds
+- **DO NOT** expect Settings → Developer → App Clip Testing to work consistently
+- **DO NOT** try to navigate Xcode 26's new UI for scheme editing - use command line instead
+
+### TestFlight App Clip Testing (if needed)
+
+If you must test via TestFlight:
+1. Build and submit: `eas build --platform ios --local --auto-submit`
+2. In App Store Connect, add an App Clip Invocation URL for the build
+3. On device, open TestFlight → Vacation Photos → scroll to "App Clips" section → tap "Test"
+4. **DO NOT** use the main "Open" button - it uses the App Store version
+
+**App Clip URL format:** `https://swapp1990.github.io/share/{shareId}`
 
 ## iOS Development Best Practices
 
