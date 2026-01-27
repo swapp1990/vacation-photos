@@ -78,6 +78,7 @@ export function useSharedVacations() {
         const vacations = parsed.map(sv => ({
           ...sv,
           receivedAt: sv.receivedAt ? new Date(sv.receivedAt) : null,
+          viewedAt: sv.viewedAt ? new Date(sv.viewedAt) : null,
           vacation: sv.vacation ? {
             ...sv.vacation,
             startDate: sv.vacation.startDate ? new Date(sv.vacation.startDate) : null,
@@ -122,6 +123,10 @@ export function useSharedVacations() {
   }, []);
 
   // Add a new shared vacation from deep link
+  // Uses two-phase loading for immediate UI feedback:
+  // Phase 1: Add placeholder immediately → user sees card appear
+  // Phase 2: Fetch metadata → card shows vacation details
+  // Phase 3: Fetch photos in background → thumbnails appear
   const addSharedVacation = useCallback(async (shareId) => {
     console.log('Adding shared vacation:', shareId);
 
@@ -132,28 +137,62 @@ export function useSharedVacations() {
       return;
     }
 
+    // Phase 1: Add placeholder immediately for instant feedback
+    const placeholder = {
+      shareId,
+      vacation: null,
+      previewPhotos: [],
+      receivedAt: new Date(),
+      isLoading: true,
+      loadingPhase: 'metadata', // 'metadata' | 'photos' | null
+    };
+
+    const withPlaceholder = [placeholder, ...sharedVacations];
+    setSharedVacations(withPlaceholder);
+    setSharedVacationsDismissed(false);
+
     try {
-      // Fetch vacation metadata and preview photos in parallel
-      const [vacation, previewPhotos] = await Promise.all([
-        fetchSharedVacation(shareId),
-        fetchPreviewPhotos(shareId),
-      ]);
+      // Phase 2: Fetch metadata first (fast, small payload)
+      const vacation = await fetchSharedVacation(shareId);
 
-      const newSharedVacation = {
-        shareId,
-        vacation,
-        previewPhotos,
-        receivedAt: new Date(),
-      };
+      // Update with metadata, still loading photos
+      setSharedVacations(current =>
+        updateVacationInList(current, shareId, {
+          vacation,
+          loadingPhase: 'photos',
+        })
+      );
 
-      const updatedVacations = [newSharedVacation, ...sharedVacations];
-      setSharedVacations(updatedVacations);
-      setSharedVacationsDismissed(false); // Show card
-      saveSharedVacations(updatedVacations);
+      // Phase 3: Fetch photos in background
+      const previewPhotos = await fetchPreviewPhotos(shareId);
+
+      // Final update: loading complete
+      setSharedVacations(current => {
+        const updated = updateVacationInList(current, shareId, {
+          previewPhotos,
+          isLoading: false,
+          loadingPhase: null,
+        });
+        // Persist to storage only after fully loaded
+        saveSharedVacations(updated);
+        return updated;
+      });
+
     } catch (error) {
       console.log('Error adding shared vacation:', error);
+      // Remove placeholder on error
+      setSharedVacations(current =>
+        current.filter(sv => sv.shareId !== shareId)
+      );
     }
   }, [sharedVacations, saveSharedVacations]);
+
+  // Helper: Update a specific vacation in the list by shareId
+  const updateVacationInList = (vacations, shareId, updates) => {
+    return vacations.map(sv =>
+      sv.shareId === shareId ? { ...sv, ...updates } : sv
+    );
+  };
 
   // Remove a shared vacation
   const removeSharedVacation = useCallback((shareId) => {
@@ -161,6 +200,22 @@ export function useSharedVacations() {
     setSharedVacations(updatedVacations);
     saveSharedVacations(updatedVacations);
   }, [sharedVacations, saveSharedVacations]);
+
+  // Mark a shared vacation as viewed
+  const markVacationAsViewed = useCallback((shareId) => {
+    const updatedVacations = sharedVacations.map(sv => {
+      if (sv.shareId === shareId && !sv.viewedAt) {
+        return { ...sv, viewedAt: new Date() };
+      }
+      return sv;
+    });
+    setSharedVacations(updatedVacations);
+    saveSharedVacations(updatedVacations);
+  }, [sharedVacations, saveSharedVacations]);
+
+  // Computed: pending (unviewed) and past (viewed) vacations
+  const pendingVacations = sharedVacations.filter(sv => !sv.viewedAt);
+  const pastVacations = sharedVacations.filter(sv => sv.viewedAt);
 
   // Handle dismissing the shared vacations card
   const dismissSharedVacations = useCallback(() => {
@@ -207,10 +262,13 @@ export function useSharedVacations() {
 
   return {
     sharedVacations,
+    pendingVacations,
+    pastVacations,
     sharedVacationsDismissed,
     uploadedVacations,
     addSharedVacation,
     removeSharedVacation,
+    markVacationAsViewed,
     dismissSharedVacations,
     getUploadStatus,
     loadUploadedVacations,

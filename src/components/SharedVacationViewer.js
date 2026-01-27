@@ -253,6 +253,9 @@ export default function SharedVacationViewer({
         <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
           <StatusBar style="auto" />
           <View style={styles.header}>
+            <TouchableOpacity style={styles.backButton} onPress={onClose}>
+              <Text style={styles.backButtonText}>← Back</Text>
+            </TouchableOpacity>
             <Text style={styles.title}>Shared Vacation</Text>
           </View>
           <View style={styles.loadingContainer}>
@@ -270,6 +273,9 @@ export default function SharedVacationViewer({
         <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
           <StatusBar style="auto" />
           <View style={styles.header}>
+            <TouchableOpacity style={styles.backButton} onPress={onClose}>
+              <Text style={styles.backButtonText}>← Back</Text>
+            </TouchableOpacity>
             <Text style={styles.title}>Shared Vacation</Text>
           </View>
           <View style={styles.errorContainer}>
@@ -291,6 +297,9 @@ export default function SharedVacationViewer({
         <StatusBar style="auto" />
 
         <View style={styles.header}>
+          <TouchableOpacity style={styles.backButton} onPress={onClose}>
+            <Text style={styles.backButtonText}>← Back</Text>
+          </TouchableOpacity>
           <Text style={styles.title}>{vacation?.locationName || 'Shared Vacation'}</Text>
           {vacation && (
             <Text style={styles.subtitle}>

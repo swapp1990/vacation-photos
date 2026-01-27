@@ -111,6 +111,31 @@ export default StyleSheet.create({
     marginRight: spacing.md,
     transform: [{ scale: 1.8 }],
   },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  sharedVacationsButton: {
+    padding: spacing.sm,
+    position: 'relative',
+  },
+  sharedBadge: {
+    position: 'absolute',
+    top: 2,
+    right: 2,
+    backgroundColor: colors.error || '#FF3B30',
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+  },
+  sharedBadgeText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '700',
+  },
   title: {
     ...typography.largeTitle,
     color: colors.text.primary,

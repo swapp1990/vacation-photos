@@ -7,14 +7,16 @@ import {
   Image,
   Animated,
   PanResponder,
+  ActivityIndicator,
 } from 'react-native';
 import { colors, spacing, typography, borderRadius, shadows } from '../styles/theme';
 
 const PHOTO_SIZE = 36;
 const SWIPE_THRESHOLD = 100;
+const MAX_PREVIEW_PHOTOS = 3;
 
 export default function SharedVacationsCard({
-  sharedVacations, // Array of { vacation, previewPhotos }
+  pendingVacations = [],
   onPress,
   onDismiss,
 }) {
@@ -49,52 +51,19 @@ export default function SharedVacationsCard({
     })
   ).current;
 
-  if (!sharedVacations || sharedVacations.length === 0) {
+  if (!pendingVacations || pendingVacations.length === 0) {
     return null;
   }
 
-  // Get unique senders
-  const senders = [...new Set(sharedVacations.map(sv => sv.vacation?.sharedBy).filter(Boolean))];
-  const senderCount = senders.length;
+  // Derive loading and content state
+  const { isAnyLoading, loadedVacations, allPhotos, senders } = deriveCardState(pendingVacations);
 
-  // Get all preview photos (up to 3)
-  const allPhotos = sharedVacations
-    .flatMap(sv => sv.previewPhotos || [])
-    .slice(0, 3);
-
-  // Get summary text
-  const getSummaryText = () => {
-    if (senderCount === 0) return 'New shared vacations';
-    if (senderCount === 1) {
-      const count = sharedVacations.length;
-      if (count === 1) {
-        return `${senders[0]} shared a vacation with you`;
-      }
-      return `${senders[0]} shared ${count} vacations`;
-    }
-    return `${senderCount} friends shared vacations with you`;
-  };
-
-  // Get location preview
-  const getLocationPreview = () => {
-    const locations = sharedVacations
-      .map(sv => sv.vacation?.locationName)
-      .filter(Boolean)
-      .slice(0, 2);
-    if (locations.length === 0) return '';
-    if (locations.length === 1) return locations[0];
-    if (sharedVacations.length > 2) {
-      return `${locations[0]} and ${sharedVacations.length - 1} more`;
-    }
-    return locations.join(', ');
-  };
+  // Determine how many photo slots to show (real photos + loading placeholders)
+  const photoSlots = getPhotoSlots(allPhotos, isAnyLoading);
 
   return (
     <Animated.View
-      style={[
-        styles.container,
-        { transform: [{ translateX }] },
-      ]}
+      style={[styles.container, { transform: [{ translateX }] }]}
       {...panResponder.panHandlers}
     >
       <TouchableOpacity
@@ -102,31 +71,16 @@ export default function SharedVacationsCard({
         onPress={onPress}
         activeOpacity={0.9}
       >
-        {/* Photo previews */}
-        {allPhotos.length > 0 && (
-          <View style={styles.photosContainer}>
-            {allPhotos.map((photo, index) => (
-              <View
-                key={index}
-                style={[
-                  styles.photoWrapper,
-                  { marginLeft: index > 0 ? -10 : 0, zIndex: 3 - index },
-                ]}
-              >
-                <Image
-                  source={{ uri: `file://${photo.localPath}` }}
-                  style={styles.photo}
-                />
-              </View>
-            ))}
-          </View>
-        )}
+        {/* Photo previews with loading placeholders */}
+        <PhotoPreviews slots={photoSlots} />
 
         {/* Text content */}
         <View style={styles.textContent}>
-          <Text style={styles.titleText}>{getSummaryText()}</Text>
+          <Text style={styles.titleText}>
+            {getSummaryText(pendingVacations, loadedVacations, senders)}
+          </Text>
           <Text style={styles.subtitleText} numberOfLines={1}>
-            {getLocationPreview()}
+            {getLocationPreview(loadedVacations, isAnyLoading)}
           </Text>
         </View>
 
@@ -141,6 +95,135 @@ export default function SharedVacationsCard({
     </Animated.View>
   );
 }
+
+// =============================================================================
+// Helper Functions
+// =============================================================================
+
+/**
+ * Derive the card's state from pending vacations
+ */
+function deriveCardState(pendingVacations) {
+  const isAnyLoading = pendingVacations.some(sv => sv.isLoading);
+  const loadedVacations = pendingVacations.filter(sv => sv.vacation);
+
+  const allPhotos = pendingVacations
+    .flatMap(sv => sv.previewPhotos || [])
+    .slice(0, MAX_PREVIEW_PHOTOS);
+
+  const senders = [...new Set(
+    loadedVacations.map(sv => sv.vacation?.sharedBy).filter(Boolean)
+  )];
+
+  return { isAnyLoading, loadedVacations, allPhotos, senders };
+}
+
+/**
+ * Get photo slots (real photos + loading placeholders)
+ */
+function getPhotoSlots(allPhotos, isAnyLoading) {
+  const slots = allPhotos.map(photo => ({ type: 'photo', photo }));
+
+  // Add loading placeholders if we're loading and don't have enough photos
+  if (isAnyLoading && slots.length < MAX_PREVIEW_PHOTOS) {
+    const placeholdersNeeded = Math.min(MAX_PREVIEW_PHOTOS - slots.length, 1);
+    for (let i = 0; i < placeholdersNeeded; i++) {
+      slots.push({ type: 'loading' });
+    }
+  }
+
+  return slots;
+}
+
+/**
+ * Get summary text based on loading state and senders
+ */
+function getSummaryText(pendingVacations, loadedVacations, senders) {
+  const totalCount = pendingVacations.length;
+  const loadedCount = loadedVacations.length;
+  const loadingCount = totalCount - loadedCount;
+
+  // All still loading
+  if (loadedCount === 0) {
+    return loadingCount === 1
+      ? 'Loading shared vacation...'
+      : `Loading ${loadingCount} shared vacations...`;
+  }
+
+  // Some loaded, some loading
+  if (loadingCount > 0) {
+    const senderText = senders.length === 1 ? senders[0] : `${senders.length} friends`;
+    return `${senderText} shared vacations (+${loadingCount} loading)`;
+  }
+
+  // All loaded
+  if (senders.length === 0) return 'New shared vacations';
+  if (senders.length === 1) {
+    return totalCount === 1
+      ? `${senders[0]} shared a vacation with you`
+      : `${senders[0]} shared ${totalCount} vacations`;
+  }
+  return `${senders.length} friends shared vacations with you`;
+}
+
+/**
+ * Get location preview text
+ */
+function getLocationPreview(loadedVacations, isAnyLoading) {
+  const locations = loadedVacations
+    .map(sv => sv.vacation?.locationName)
+    .filter(Boolean)
+    .slice(0, 2);
+
+  if (locations.length === 0) {
+    return isAnyLoading ? 'Fetching details...' : '';
+  }
+  if (locations.length === 1) return locations[0];
+  if (loadedVacations.length > 2) {
+    return `${locations[0]} and ${loadedVacations.length - 1} more`;
+  }
+  return locations.join(', ');
+}
+
+// =============================================================================
+// Sub-components
+// =============================================================================
+
+/**
+ * Photo previews with loading placeholders
+ */
+function PhotoPreviews({ slots }) {
+  if (slots.length === 0) return null;
+
+  return (
+    <View style={styles.photosContainer}>
+      {slots.map((slot, index) => (
+        <View
+          key={index}
+          style={[
+            styles.photoWrapper,
+            { marginLeft: index > 0 ? -10 : 0, zIndex: MAX_PREVIEW_PHOTOS - index },
+          ]}
+        >
+          {slot.type === 'photo' ? (
+            <Image
+              source={{ uri: `file://${slot.photo.localPath}` }}
+              style={styles.photo}
+            />
+          ) : (
+            <View style={styles.photoPlaceholder}>
+              <ActivityIndicator size="small" color={colors.primary} />
+            </View>
+          )}
+        </View>
+      ))}
+    </View>
+  );
+}
+
+// =============================================================================
+// Styles
+// =============================================================================
 
 const styles = StyleSheet.create({
   container: {
@@ -173,6 +256,13 @@ const styles = StyleSheet.create({
   photo: {
     width: '100%',
     height: '100%',
+  },
+  photoPlaceholder: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: colors.border,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   textContent: {
     flex: 1,

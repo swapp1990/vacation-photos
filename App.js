@@ -220,9 +220,12 @@ export default function App() {
 
   const {
     sharedVacations,
+    pendingVacations,
+    pastVacations,
     sharedVacationsDismissed,
     getUploadStatus,
     loadUploadedVacations,
+    markVacationAsViewed,
     dismissSharedVacations: handleDismissSharedVacations,
   } = sharedVacationsHook;
 
@@ -416,12 +419,13 @@ export default function App() {
 
   // Handle card tap - open the list or viewer
   const handleSharedVacationsCardPress = useCallback(() => {
-    if (sharedVacations.length === 1) {
-      setSharedVacationId(sharedVacations[0].shareId);
+    if (pendingVacations.length === 1) {
+      markVacationAsViewed(pendingVacations[0].shareId);
+      setSharedVacationId(pendingVacations[0].shareId);
     } else {
       setShowSharedVacationsList(true);
     }
-  }, [sharedVacations]);
+  }, [pendingVacations, markVacationAsViewed]);
 
   // Handle selecting a vacation from the list
   const handleSelectSharedVacation = useCallback((shareId) => {
@@ -922,8 +926,10 @@ export default function App() {
   if (showSharedVacationsList) {
     return (
       <SharedVacationsList
-        sharedVacations={sharedVacations}
+        pendingVacations={pendingVacations}
+        pastVacations={pastVacations}
         onSelectVacation={handleSelectSharedVacation}
+        onMarkAsViewed={markVacationAsViewed}
         onClose={() => setShowSharedVacationsList(false)}
       />
     );
@@ -1308,20 +1314,35 @@ export default function App() {
               {clusters.length} trips · {photos.length} photos
             </Text>
           </View>
-          {DEBUG_MODE && (
-            <TouchableOpacity
-              onPress={handleClearCache}
-              style={styles.debugButton}
-            >
-              <Text style={styles.debugButtonText}>Clear</Text>
-            </TouchableOpacity>
-          )}
+          <View style={styles.headerRight}>
+            {sharedVacations.length > 0 && (
+              <TouchableOpacity
+                onPress={() => setShowSharedVacationsList(true)}
+                style={styles.sharedVacationsButton}
+              >
+                <Ionicons name="people" size={22} color={colors.primary} />
+                {pendingVacations.length > 0 && (
+                  <View style={styles.sharedBadge}>
+                    <Text style={styles.sharedBadgeText}>{pendingVacations.length}</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            )}
+            {DEBUG_MODE && (
+              <TouchableOpacity
+                onPress={handleClearCache}
+                style={styles.debugButton}
+              >
+                <Text style={styles.debugButtonText}>Clear</Text>
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
 
         {/* Shared Vacations Card */}
-        {sharedVacations.length > 0 && !sharedVacationsDismissed && (
+        {pendingVacations.length > 0 && !sharedVacationsDismissed && (
           <SharedVacationsCard
-            sharedVacations={sharedVacations}
+            pendingVacations={pendingVacations}
             onPress={handleSharedVacationsCardPress}
             onDismiss={handleDismissSharedVacations}
           />
