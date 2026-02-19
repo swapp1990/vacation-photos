@@ -140,6 +140,28 @@ src/
 - Create inline StyleSheet in component files - create separate style files
 - Use `position: absolute` with `top: 20` near screen edges - use SafeAreaView
 
+## Experiment Logging (Impressions Agency Client)
+
+This app is a client of Impressions Agency. Any change that could affect App Store metrics (features, ASO metadata, marketing) **MUST** be logged via the changelog API so we can correlate metric movements to actions.
+
+```bash
+# Log a change
+curl -X POST https://moltbot.swapp1990.org/api/changelog \
+  -H 'Content-Type: application/json' \
+  -d '{"product":"vacationphotos","date":"2026-02-19","change":"Description of what changed","channel":"aso","batch":"v1.1.8"}'
+```
+
+**Channels:** `aso` (metadata, keywords, screenshots), `product` (features, version releases), `marketing` (social posts, Reddit, TikTok)
+
+**When to log:**
+- At version submission time — one entry per change in the batch
+- When ASO metadata is updated in App Store Connect (no version needed for promo text)
+- When external marketing goes live (posts, campaigns)
+
+**Check metrics:** `GET https://moltbot.swapp1990.org/api/impressions/north-star?product=vacationphotos`
+**View changelog:** `GET https://moltbot.swapp1990.org/api/changelog?product=vacationphotos`
+**Agency docs:** `/Users/swapnilsawant/projects/impressions-agency/products/VacationPhotos/`
+
 ## Journal
 
 Write entries in `docs/journals/YYYY-MM-DD.md` as a developer journal, not technical documentation. Keep it chronological - what you tried, what failed, what worked. Use short bullet points. Capture the journey including dead ends, not just final solutions. Keep entries concise for quick readability.
