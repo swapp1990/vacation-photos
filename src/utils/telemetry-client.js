@@ -17,6 +17,11 @@ let config = null;
 
 // --- Environment Detection ---
 function detectEnvironment() {
+  // EAS build profiles set this via eas.json env block
+  if (typeof process !== 'undefined' && process.env?.EXPO_PUBLIC_ENVIRONMENT) {
+    return process.env.EXPO_PUBLIC_ENVIRONMENT;
+  }
+
   try {
     // Try Expo Constants
     const Constants = require('expo-constants').default;

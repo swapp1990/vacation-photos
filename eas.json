@@ -19,10 +19,16 @@
       }
     },
     "preview": {
-      "distribution": "internal"
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_ENVIRONMENT": "testflight"
+      }
     },
     "production": {
-      "autoIncrement": false
+      "autoIncrement": false,
+      "env": {
+        "EXPO_PUBLIC_ENVIRONMENT": "production"
+      }
     }
   },
   "submit": {
