@@ -63,6 +63,8 @@ import {
   useSharedVacations,
   useFaceDetection,
 } from './src/hooks';
+import { initAnalytics, track, trackNorthStar, Events } from './src/utils/analytics';
+import { recordPositiveMoment } from './src/utils/reviewPrompt';
 
 // Debug mode - set to false for production
 const DEBUG_MODE = __DEV__;
@@ -273,6 +275,8 @@ export default function App() {
 
   // Initialize app on mount
   useEffect(() => {
+    initAnalytics();
+    track(Events.APP_OPENED);
     initializeApp();
   }, []);
 
@@ -422,6 +426,7 @@ export default function App() {
     if (pendingVacations.length === 1) {
       markVacationAsViewed(pendingVacations[0].shareId);
       setSharedVacationId(pendingVacations[0].shareId);
+      track(Events.SHARE_RECEIVED, { shareId: pendingVacations[0].shareId });
     } else {
       setShowSharedVacationsList(true);
     }
@@ -540,6 +545,8 @@ export default function App() {
 
   const handleViewAll = useCallback((cluster) => {
     setSelectedCluster(cluster);
+    track(Events.TRIP_VIEWED, { location: cluster.locationName || 'unknown' });
+    recordPositiveMoment();
   }, []);
 
   // Handle location edit from ClusterCard
@@ -706,6 +713,7 @@ export default function App() {
                       // Store shareId to show after onboarding
                       setPendingAppClipShare(appClipContext.shareId);
                       handleGetStarted();
+                      track(Events.ONBOARDING_COMPLETED, { source: 'app_clip' });
                     }}
                   >
                     <Text style={styles.onboardingButtonText}>Get Started</Text>
@@ -740,7 +748,10 @@ export default function App() {
                 <Text style={styles.onboardingFeatureText}>🗺️ Groups them by where you went</Text>
                 <Text style={styles.onboardingFeatureText}>🔐 Everything stays on your phone</Text>
               </View>
-              <TouchableOpacity style={styles.onboardingButton} onPress={handleGetStarted}>
+              <TouchableOpacity style={styles.onboardingButton} onPress={() => {
+                handleGetStarted();
+                track(Events.ONBOARDING_COMPLETED);
+              }}>
                 <Text style={styles.onboardingButtonText}>Let's Go!</Text>
               </TouchableOpacity>
             </View>
