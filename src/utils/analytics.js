@@ -31,4 +31,10 @@ export const Events = {
   PHOTO_SAVED: 'vp_photo_saved',
   SHARE_RECEIVED: 'vp_share_received',
   REVIEW_PROMPTED: 'vp_review_prompted',
+  APP_CLIP_OPENED: 'vp_app_clip_opened',
+  SHARED_ALBUM_OPENED: 'vp_shared_album_opened',
+  LOAD_MORE: 'vp_load_more',
+  SHARE_MESSAGE_SENT: 'vp_share_message_sent',
+  SHARE_LINK_COPIED: 'vp_share_link_copied',
+  ERROR: 'vp_error',
 };

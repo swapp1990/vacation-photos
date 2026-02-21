@@ -90,6 +90,7 @@ export default function ShareModal({ visible, onClose, cluster, onShareComplete 
     const shareMessage = `${userName} shared ${locationName}! 🌴\n${dateRange} · ${shareResult.photosUploaded} photos\n\nTap to view instantly (no download needed):\n${shareResult.shareLink}`;
 
     Clipboard.setString(shareMessage);
+    track(Events.SHARE_LINK_COPIED, { location: locationName });
     Alert.alert('Copied!', 'Link copied to clipboard');
   };
 
@@ -271,11 +272,13 @@ export default function ShareModal({ visible, onClose, cluster, onShareComplete 
         setScreen(SCREEN.CONTACTS);
         loadContacts();
       } else {
+        track(Events.ERROR, { step: 'upload', error: result.error || 'upload_failed' });
         Alert.alert('Upload Failed', result.error || 'Failed to upload photos. Please try again.');
         setScreen(SCREEN.UPLOAD_CONFIRM);
       }
     } catch (error) {
       console.log('Upload error:', error);
+      track(Events.ERROR, { step: 'upload', error: error.message });
       Alert.alert('Error', 'An unexpected error occurred. Please try again.');
       setScreen(SCREEN.UPLOAD_CONFIRM);
     }
@@ -298,6 +301,7 @@ export default function ShareModal({ visible, onClose, cluster, onShareComplete 
 
       if (canOpen) {
         await Linking.openURL(whatsappUrl);
+        track(Events.SHARE_MESSAGE_SENT, { channel: 'whatsapp', location: locationName });
         onClose();
       } else {
         Alert.alert(
@@ -310,6 +314,7 @@ export default function ShareModal({ visible, onClose, cluster, onShareComplete 
               onPress: () => {
                 const smsUrl = `sms:${phoneNumber}&body=${encodeURIComponent(shareMessage)}`;
                 Linking.openURL(smsUrl);
+                track(Events.SHARE_MESSAGE_SENT, { channel: 'sms', location: locationName });
                 onClose();
               },
             },

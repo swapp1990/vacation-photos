@@ -15,6 +15,7 @@ import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { colors, spacing, typography, borderRadius, shadows } from '../styles/theme';
 import { downloadSharedVacation, savePhotoToDevice, saveAllPhotosToDevice } from '../services/photoDownloadService';
+import { track, Events } from '../utils/analytics';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const NUM_COLUMNS = 3;
@@ -83,7 +84,9 @@ export default function SharedVacationViewer({
     if (result.success) {
       setVacation(result.vacation);
       setPhotos(result.photos);
+      track(Events.SHARE_RECEIVED, { shareId, photoCount: result.photos?.length });
     } else {
+      track(Events.ERROR, { step: 'download_shared', shareId, error: result.error || 'download_failed' });
       setError(result.error || 'Failed to load shared vacation');
     }
 
@@ -94,8 +97,10 @@ export default function SharedVacationViewer({
     const result = await savePhotoToDevice(photo, shareId);
 
     if (result.success) {
+      track(Events.PHOTO_SAVED, { shareId, type: 'single' });
       Alert.alert('Saved', 'Photo saved to your library');
     } else {
+      track(Events.ERROR, { step: 'save_photo', shareId, error: result.error || 'save_failed' });
       Alert.alert('Error', result.error || 'Failed to save photo');
     }
   };
@@ -113,13 +118,16 @@ export default function SharedVacationViewer({
     setSavingAll(false);
 
     if (result.success) {
+      track(Events.PHOTO_SAVED, { shareId, type: 'all', count: result.savedCount });
       Alert.alert('Saved', `All ${result.savedCount} photos saved to your library`);
     } else if (result.savedCount > 0) {
+      track(Events.PHOTO_SAVED, { shareId, type: 'all', count: result.savedCount, failed: result.failedCount });
       Alert.alert(
         'Partially Saved',
         `${result.savedCount} photos saved, ${result.failedCount} failed`
       );
     } else {
+      track(Events.ERROR, { step: 'save_all_photos', shareId, error: result.error || 'save_all_failed' });
       Alert.alert('Error', result.error || 'Failed to save photos');
     }
   };

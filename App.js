@@ -289,6 +289,7 @@ export default function App() {
         if (pending && pending.shareId) {
           console.log('[App] Found pending share from App Clip:', pending.shareId);
           console.log('[App] Context:', pending.locationName, pending.sharedBy, pending.thumbnails?.length);
+          track(Events.APP_CLIP_OPENED, { shareId: pending.shareId, sharedBy: pending.sharedBy });
           setPendingAppClipShare(pending.shareId);
           // Store full context for contextual onboarding
           setAppClipContext(pending);
@@ -322,6 +323,7 @@ export default function App() {
     // Only trigger when onboarding is complete and we have a pending share
     if (showOnboarding === false && !showLocationSelection && pendingAppClipShare && hasPermission === true) {
       console.log('[App] Onboarding complete, showing shared vacation:', pendingAppClipShare);
+      track(Events.SHARED_ALBUM_OPENED, { shareId: pendingAppClipShare, source: 'app_clip' });
       setSharedVacationId(pendingAppClipShare);
       setShowAppClipPrompt(true);
       // Clear so we don't show again
@@ -426,7 +428,7 @@ export default function App() {
     if (pendingVacations.length === 1) {
       markVacationAsViewed(pendingVacations[0].shareId);
       setSharedVacationId(pendingVacations[0].shareId);
-      track(Events.SHARE_RECEIVED, { shareId: pendingVacations[0].shareId });
+      track(Events.SHARED_ALBUM_OPENED, { shareId: pendingVacations[0].shareId, source: 'card' });
     } else {
       setShowSharedVacationsList(true);
     }
@@ -436,6 +438,7 @@ export default function App() {
   const handleSelectSharedVacation = useCallback((shareId) => {
     setShowSharedVacationsList(false);
     setSharedVacationId(shareId);
+    track(Events.SHARED_ALBUM_OPENED, { shareId, source: 'list' });
   }, []);
 
   // Search for locations using Nominatim API
@@ -1395,7 +1398,7 @@ export default function App() {
               <View style={styles.footerContainer}>
                 <TouchableOpacity
                   style={[styles.loadMoreButton, loadingMore && styles.loadMoreButtonDisabled]}
-                  onPress={loadMore}
+                  onPress={() => { track(Events.LOAD_MORE); loadMore(); }}
                   disabled={loadingMore}
                 >
                   {loadingMore ? (
