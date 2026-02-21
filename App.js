@@ -64,7 +64,7 @@ import {
   useFaceDetection,
 } from './src/hooks';
 import { initAnalytics, track, trackNorthStar, Events } from './src/utils/analytics';
-import { recordPositiveMoment } from './src/utils/reviewPrompt';
+import { recordPositiveMoment, resetSessionFlag } from './src/utils/reviewPrompt';
 
 // Debug mode - set to false for production
 const DEBUG_MODE = __DEV__;
@@ -277,6 +277,7 @@ export default function App() {
   useEffect(() => {
     initAnalytics();
     track(Events.APP_OPENED);
+    resetSessionFlag();
     initializeApp();
   }, []);
 
