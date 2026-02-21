@@ -1,7 +1,7 @@
 # Web Presence Plan: Vacation Photos
 
 **Date:** Feb 21, 2026
-**Status:** Proposed
+**Status:** IMPLEMENTED (pending DNS + SSL)
 **Blocks:** GEO Runbook Phase 0 + Phase 1 (blog content, AI crawler access, schema markup)
 **References:** REQ-12 (developer-requirements.md), TemplateGen website-requirements.md, GEO runbook
 
