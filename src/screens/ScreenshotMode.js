@@ -6,74 +6,88 @@ import {
   Image,
   TouchableOpacity,
   Dimensions,
-  ScrollView,
-  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import styles, { imageSize } from '../styles/appStyles';
+import { Ionicons } from '@expo/vector-icons';
+import styles from '../styles/appStyles';
+import { colors, spacing, typography, borderRadius } from '../styles/theme';
 
 const { width } = Dimensions.get('window');
 
-// Mock trip data for screenshots
+// High-quality vacation photos from Lorem Picsum (specific IDs that look like travel photos)
 const MOCK_TRIPS = [
   {
     id: 'trip-1',
-    locationName: 'Paris, France',
+    locationName: 'Maui, Hawaii',
     photos: [
-      { id: '1', uri: 'https://picsum.photos/seed/paris1/400/400' },
-      { id: '2', uri: 'https://picsum.photos/seed/paris2/400/400' },
-      { id: '3', uri: 'https://picsum.photos/seed/paris3/400/400' },
-      { id: '4', uri: 'https://picsum.photos/seed/paris4/400/400' },
-      { id: '5', uri: 'https://picsum.photos/seed/paris5/400/400' },
-      { id: '6', uri: 'https://picsum.photos/seed/paris6/400/400' },
+      { id: '1', uri: 'https://picsum.photos/id/1036/600/600' }, // Beach/water
+      { id: '2', uri: 'https://picsum.photos/id/1040/400/400' }, // Sunset landscape
+      { id: '3', uri: 'https://picsum.photos/id/1051/400/400' }, // Nature
+      { id: '4', uri: 'https://picsum.photos/id/1043/400/400' }, // Coastal
+      { id: '5', uri: 'https://picsum.photos/id/1044/400/400' },
+      { id: '6', uri: 'https://picsum.photos/id/1047/400/400' },
+      { id: '7', uri: 'https://picsum.photos/id/1053/400/400' },
+      { id: '8', uri: 'https://picsum.photos/id/1057/400/400' },
+      { id: '9', uri: 'https://picsum.photos/id/1058/400/400' },
     ],
-    startDate: new Date('2024-09-15'),
-    endDate: new Date('2024-09-22'),
+    startDate: new Date('2024-03-15'),
+    endDate: new Date('2024-03-22'),
     days: 8,
-    isVacation: true,
+    distanceMiles: 2847,
   },
   {
     id: 'trip-2',
     locationName: 'Tokyo, Japan',
     photos: [
-      { id: '7', uri: 'https://picsum.photos/seed/tokyo1/400/400' },
-      { id: '8', uri: 'https://picsum.photos/seed/tokyo2/400/400' },
-      { id: '9', uri: 'https://picsum.photos/seed/tokyo3/400/400' },
-      { id: '10', uri: 'https://picsum.photos/seed/tokyo4/400/400' },
-      { id: '11', uri: 'https://picsum.photos/seed/tokyo5/400/400' },
+      { id: '10', uri: 'https://picsum.photos/id/1029/600/600' }, // Mountain/nature
+      { id: '11', uri: 'https://picsum.photos/id/164/400/400' },  // Architecture
+      { id: '12', uri: 'https://picsum.photos/id/1015/400/400' }, // River/nature
+      { id: '13', uri: 'https://picsum.photos/id/1059/400/400' },
+      { id: '14', uri: 'https://picsum.photos/id/1067/400/400' },
+      { id: '15', uri: 'https://picsum.photos/id/1069/400/400' },
+      { id: '16', uri: 'https://picsum.photos/id/1060/400/400' },
+      { id: '17', uri: 'https://picsum.photos/id/1061/400/400' },
+      { id: '18', uri: 'https://picsum.photos/id/1062/400/400' },
+      { id: '19', uri: 'https://picsum.photos/id/1063/400/400' },
+      { id: '20', uri: 'https://picsum.photos/id/1064/400/400' },
+      { id: '21', uri: 'https://picsum.photos/id/1065/400/400' },
     ],
-    startDate: new Date('2024-07-01'),
-    endDate: new Date('2024-07-10'),
-    days: 10,
-    isVacation: true,
+    startDate: new Date('2024-04-01'),
+    endDate: new Date('2024-04-08'),
+    days: 8,
+    distanceMiles: 5280,
   },
   {
     id: 'trip-3',
-    locationName: 'Santorini, Greece',
+    locationName: 'Rome, Italy',
     photos: [
-      { id: '12', uri: 'https://picsum.photos/seed/greece1/400/400' },
-      { id: '13', uri: 'https://picsum.photos/seed/greece2/400/400' },
-      { id: '14', uri: 'https://picsum.photos/seed/greece3/400/400' },
-      { id: '15', uri: 'https://picsum.photos/seed/greece4/400/400' },
+      { id: '22', uri: 'https://picsum.photos/id/1042/600/600' }, // Coastal cliffs
+      { id: '23', uri: 'https://picsum.photos/id/1039/400/400' }, // Architecture
+      { id: '24', uri: 'https://picsum.photos/id/1028/400/400' }, // Cityscape
+      { id: '25', uri: 'https://picsum.photos/id/1005/400/400' },
+      { id: '26', uri: 'https://picsum.photos/id/1006/400/400' },
+      { id: '27', uri: 'https://picsum.photos/id/1035/400/400' },
     ],
-    startDate: new Date('2024-05-20'),
-    endDate: new Date('2024-05-25'),
-    days: 6,
-    isVacation: true,
+    startDate: new Date('2023-06-03'),
+    endDate: new Date('2023-06-10'),
+    days: 8,
+    distanceMiles: 4920,
   },
   {
     id: 'trip-4',
-    locationName: 'New York, USA',
+    locationName: 'Banff, Canada',
     photos: [
-      { id: '16', uri: 'https://picsum.photos/seed/nyc1/400/400' },
-      { id: '17', uri: 'https://picsum.photos/seed/nyc2/400/400' },
-      { id: '18', uri: 'https://picsum.photos/seed/nyc3/400/400' },
+      { id: '28', uri: 'https://picsum.photos/id/1018/600/600' }, // Mountain lake
+      { id: '29', uri: 'https://picsum.photos/id/1019/400/400' }, // Forest
+      { id: '30', uri: 'https://picsum.photos/id/1011/400/400' }, // Mountains
+      { id: '31', uri: 'https://picsum.photos/id/1016/400/400' },
+      { id: '32', uri: 'https://picsum.photos/id/1020/400/400' },
     ],
-    startDate: new Date('2024-03-10'),
-    endDate: new Date('2024-03-14'),
-    days: 5,
-    isVacation: true,
+    startDate: new Date('2023-08-15'),
+    endDate: new Date('2023-08-20'),
+    days: 6,
+    distanceMiles: 1350,
   },
 ];
 
@@ -82,188 +96,160 @@ function formatDateRange(start, end) {
   const startStr = start.toLocaleDateString('en-US', options);
   const endStr = end.toLocaleDateString('en-US', options);
   const year = start.getFullYear();
-
-  if (startStr === endStr) {
-    return `${startStr}, ${year}`;
-  }
   return `${startStr} - ${endStr}, ${year}`;
 }
 
-function MockPhotoThumbnail({ uri, onPress, size = imageSize }) {
+function getDistanceEmoji(miles) {
+  if (miles < 100) return '🚗';
+  if (miles < 500) return '🚂';
+  if (miles < 1500) return '✈️';
+  if (miles < 5000) return '🌍';
+  return '🚀';
+}
+
+// Photo collage matching real app's ClusterCard layout
+function PhotoCollage({ photos, remaining, distanceMiles }) {
   return (
-    <TouchableOpacity onPress={() => onPress(uri)}>
-      <Image
-        source={{ uri }}
-        style={[styles.thumbnail, { width: size, height: size }]}
-      />
-    </TouchableOpacity>
+    <View style={styles.clusterCollage}>
+      {/* Main large photo */}
+      <View style={styles.clusterMainPhoto}>
+        <Image source={{ uri: photos[0].uri }} style={styles.clusterMainPhotoImage} />
+      </View>
+      {/* Side photos */}
+      {photos.length > 1 && (
+        <View style={styles.clusterSidePhotos}>
+          {photos.slice(1, 4).map((photo, index) => (
+            <View
+              key={photo.id}
+              style={[
+                styles.clusterSidePhoto,
+                index === Math.min(photos.length - 2, 2) && styles.clusterSidePhotoLast,
+              ]}
+            >
+              <Image source={{ uri: photo.uri }} style={styles.clusterSidePhotoImage} />
+              {index === 2 && remaining > 0 && (
+                <View style={styles.clusterMoreOverlay}>
+                  <Text style={styles.clusterMoreText}>+{remaining}</Text>
+                </View>
+              )}
+            </View>
+          ))}
+        </View>
+      )}
+      {/* Distance badge */}
+      {distanceMiles && (
+        <View style={styles.distanceBadge}>
+          <Text style={styles.distanceBadgeEmoji}>{getDistanceEmoji(distanceMiles)}</Text>
+          <Text style={styles.distanceBadgeText}>{distanceMiles.toLocaleString()} mi</Text>
+        </View>
+      )}
+    </View>
   );
 }
 
-function MockClusterCard({ cluster, onPhotoPress, onViewAll }) {
-  const previewPhotos = cluster.photos.slice(0, 4);
-  const remaining = cluster.photos.length - 4;
+// Trip card matching real app's ClusterCard
+function MockClusterCard({ trip }) {
+  const photos = trip.photos.slice(0, 4);
+  const remaining = trip.photos.length - 4;
+  const dateRange = formatDateRange(trip.startDate, trip.endDate);
 
   return (
     <View style={styles.clusterCard}>
-      <View style={styles.clusterHeader}>
-        <View>
-          <View style={styles.clusterTitleRow}>
-            {cluster.isVacation && <Text style={styles.vacationBadge}>Trip</Text>}
-            <Text style={styles.clusterTitle}>
-              {cluster.photos.length} photos
-            </Text>
+      <PhotoCollage photos={photos} remaining={remaining} distanceMiles={trip.distanceMiles} />
+      <View style={styles.clusterInfo}>
+        <View style={styles.clusterTopRow}>
+          <Text style={styles.clusterLocationText} numberOfLines={1}>{trip.locationName}</Text>
+          <View style={styles.shareButton}>
+            <Ionicons name="arrow-redo" size={20} color={colors.primary} />
           </View>
-          <Text style={styles.clusterDate}>
-            {formatDateRange(cluster.startDate, cluster.endDate)}
-            {cluster.days > 1 ? ` · ${cluster.days} days` : ''}
-          </Text>
-          <Text style={styles.clusterLocation}>
-            📍 {cluster.locationName}
-          </Text>
         </View>
-        <TouchableOpacity onPress={() => onViewAll(cluster)} style={styles.viewAllButton}>
-          <Text style={styles.viewAllText}>View All</Text>
-        </TouchableOpacity>
-      </View>
-      <View style={styles.clusterPreview}>
-        {previewPhotos.map((photo, index) => (
-          <View key={photo.id} style={styles.previewContainer}>
-            <MockPhotoThumbnail
-              uri={photo.uri}
-              onPress={onPhotoPress}
-              size={(width - 48) / 4 - 4}
-            />
-            {index === 3 && remaining > 0 && (
-              <View style={styles.remainingOverlay}>
-                <Text style={styles.remainingText}>+{remaining}</Text>
-              </View>
-            )}
-          </View>
-        ))}
+        <View style={styles.clusterMeta}>
+          <Text style={styles.clusterMetaText}>{trip.photos.length} photos</Text>
+          <Text style={styles.clusterMetaDot}>·</Text>
+          <Text style={styles.clusterMetaText}>{dateRange}</Text>
+        </View>
       </View>
     </View>
   );
 }
 
-export default function ScreenshotMode() {
-  const [selectedImage, setSelectedImage] = useState(null);
-  const [selectedCluster, setSelectedCluster] = useState(null);
-  const [isLoading, setIsLoading] = useState(true); // For screenshot - tap to dismiss
-
-  const totalPhotos = MOCK_TRIPS.reduce((sum, trip) => sum + trip.photos.length, 0);
-
-  // Loading screen for screenshot - tap anywhere to dismiss
-  // Matches the actual app's splash screen from App.js lines 570-587
-  if (isLoading) {
-    return (
-      <TouchableOpacity
-        activeOpacity={1}
-        onPress={() => setIsLoading(false)}
-        style={{ flex: 1 }}
-      >
-        <View style={styles.splashContainer}>
-          <StatusBar style="light" />
-          <Image
-            source={require('../../assets/vacation-splash.png')}
-            style={styles.splashImage}
-            resizeMode="cover"
-          />
-          <View style={styles.splashOverlay}>
-            <View style={styles.loadingBox}>
-              <ActivityIndicator size="large" color="#007AFF" />
-              <Text style={styles.splashLoadingText}>Finding your vacation photos...</Text>
-            </View>
-          </View>
-        </View>
-      </TouchableOpacity>
-    );
-  }
-
-  // Full screen image view
-  if (selectedImage) {
-    return (
-      <View style={styles.fullscreenContainer}>
-        <StatusBar style="light" />
-        <View style={styles.fullscreenOverlay}>
-          <SafeAreaView edges={['top']}>
-            <TouchableOpacity
-              style={styles.closeButton}
-              onPress={() => setSelectedImage(null)}
-            >
-              <Text style={styles.closeText}>Done</Text>
-            </TouchableOpacity>
-          </SafeAreaView>
-        </View>
-        <Image
-          source={{ uri: selectedImage }}
-          style={styles.fullImage}
-          resizeMode="contain"
-        />
-      </View>
-    );
-  }
-
-  // Trip detail view
-  if (selectedCluster) {
-    return (
-      <SafeAreaProvider>
-        <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-          <StatusBar style="auto" />
-          <View style={styles.header}>
-            <TouchableOpacity onPress={() => setSelectedCluster(null)}>
-              <Text style={styles.backButton}>← Back</Text>
-            </TouchableOpacity>
-            <Text style={styles.title}>
-              {selectedCluster.locationName}
-            </Text>
-            <Text style={styles.subtitle}>
-              {formatDateRange(selectedCluster.startDate, selectedCluster.endDate)}
-              {' · '}{selectedCluster.photos.length} photos
-            </Text>
-          </View>
-          <FlatList
-            key="photo-grid"
-            data={selectedCluster.photos}
-            renderItem={({ item }) => (
-              <MockPhotoThumbnail uri={item.uri} onPress={setSelectedImage} />
-            )}
-            keyExtractor={(item) => item.id}
-            numColumns={3}
-            contentContainerStyle={styles.gallery}
-          />
-        </SafeAreaView>
-      </SafeAreaProvider>
-    );
-  }
-
-  // Main view
+// Trip detail view (photo grid)
+function TripDetail({ trip, onBack }) {
   return (
     <SafeAreaProvider>
       <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
         <StatusBar style="auto" />
         <View style={styles.header}>
-          <Image
-            source={require('../../assets/app-logo-transparent.png')}
-            style={styles.headerLogo}
-            resizeMode="contain"
-          />
+          <TouchableOpacity onPress={onBack}>
+            <Text style={styles.backButton}>← Back</Text>
+          </TouchableOpacity>
+          <Text style={styles.title}>{trip.locationName}</Text>
           <Text style={styles.subtitle}>
-            {MOCK_TRIPS.length} trips · {totalPhotos} photos (50+ miles from home)
+            {formatDateRange(trip.startDate, trip.endDate)} · {trip.photos.length} photos
           </Text>
         </View>
         <FlatList
-          key="trips-list"
-          data={MOCK_TRIPS}
+          data={trip.photos}
           renderItem={({ item }) => (
-            <MockClusterCard
-              cluster={item}
-              onPhotoPress={setSelectedImage}
-              onViewAll={setSelectedCluster}
+            <Image
+              source={{ uri: item.uri }}
+              style={{
+                width: (width - 8) / 3,
+                height: (width - 8) / 3,
+                margin: 1,
+              }}
             />
           )}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.clusterList}
+          numColumns={3}
+          contentContainerStyle={{ padding: 2 }}
+        />
+      </SafeAreaView>
+    </SafeAreaProvider>
+  );
+}
+
+export default function ScreenshotMode() {
+  const [selectedTrip, setSelectedTrip] = useState(null);
+
+  const totalPhotos = MOCK_TRIPS.reduce((sum, trip) => sum + trip.photos.length, 0);
+
+  if (selectedTrip) {
+    return <TripDetail trip={selectedTrip} onBack={() => setSelectedTrip(null)} />;
+  }
+
+  return (
+    <SafeAreaProvider>
+      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+        <StatusBar style="auto" />
+        <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.sm }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.xs }}>
+            <View style={{
+              width: 40,
+              height: 40,
+              borderRadius: 12,
+              backgroundColor: colors.primary,
+              justifyContent: 'center',
+              alignItems: 'center',
+              marginRight: spacing.md,
+            }}>
+              <Ionicons name="cube" size={22} color="white" />
+            </View>
+            <Text style={typography.title}>Vacations</Text>
+          </View>
+          <Text style={[typography.caption, { color: colors.text.muted, marginLeft: 52 }]}>
+            {MOCK_TRIPS.length} trips · {totalPhotos} photos
+          </Text>
+        </View>
+        <FlatList
+          data={MOCK_TRIPS}
+          renderItem={({ item }) => (
+            <TouchableOpacity onPress={() => setSelectedTrip(item)} activeOpacity={0.9}>
+              <MockClusterCard trip={item} />
+            </TouchableOpacity>
+          )}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingTop: spacing.sm }}
         />
       </SafeAreaView>
     </SafeAreaProvider>

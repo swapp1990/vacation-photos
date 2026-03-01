@@ -1,0 +1,17 @@
+{
+  "screens": ["main", "detail"],
+  "headlines": [
+    "Your vacations, auto-organized",
+    "Every photo, sorted by destination"
+  ],
+  "subtexts": [
+    "No folders. No tagging. Just magic.",
+    null
+  ],
+  "gradients": [
+    ["#7C3AED", "#5B21B6"],
+    ["#7C3AED", "#5B21B6"]
+  ],
+  "textPositions": ["top", "top"],
+  "waitTime": 5
+}
