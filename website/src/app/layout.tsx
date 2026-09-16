@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Script from "next/script";
+import { SWAP_ANALYTICS_BEACON_SCRIPT } from "@/lib/swapAnalyticsBeacon";
 import "./globals.css";
 
 const GA_MEASUREMENT_ID = "G-7RQX87Q7M9";
@@ -55,6 +56,9 @@ export default function RootLayout({
             gtag('js', new Date());
             gtag('config', '${GA_MEASUREMENT_ID}');
           `}
+        </Script>
+        <Script id="swapanalytics-beacon" strategy="afterInteractive">
+          {SWAP_ANALYTICS_BEACON_SCRIPT}
         </Script>
         <meta
           name="viewport"
