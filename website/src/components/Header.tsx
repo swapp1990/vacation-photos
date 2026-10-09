@@ -4,7 +4,7 @@ import { APP_STORE_URL } from "@/lib/site";
 
 export default function Header() {
   return (
-    <header className="fixed top-0 w-full z-50 bg-[var(--color-bg)]/95 border-b border-[var(--color-border)]">
+    <header className="vp-header fixed top-0 w-full z-50 bg-[var(--color-bg)]/80 border-b border-[var(--color-border)]">
       <nav className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-3">
           <Picture

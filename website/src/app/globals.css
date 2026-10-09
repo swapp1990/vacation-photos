@@ -39,3 +39,5 @@ body {
 .vp-cv-3{contain-intrinsic-size:auto 693px}
 .vp-cv-4{contain-intrinsic-size:auto 572.5px}
 }
+/* vp3: original header blur, applied after first paint (attribute set by the defer-hydration loader) */
+html[data-vp-painted] .vp-header{-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
