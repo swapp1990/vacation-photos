@@ -6,7 +6,7 @@
     "dev": "next dev -p 8006",
     "build": "next build",
     "start": "next start -p 8006",
-    "postbuild": "next-sitemap",
+    "postbuild": "next-sitemap && node scripts/defer-hydration.mjs",
     "images": "node scripts/gen-images.mjs"
   },
   "dependencies": {
