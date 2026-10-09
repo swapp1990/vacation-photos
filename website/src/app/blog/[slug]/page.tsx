@@ -1,7 +1,15 @@
 import type { Metadata } from "next";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import Breadcrumbs from "@/components/Breadcrumbs";
 import { getAllPosts, getPost } from "@/lib/blog";
+import {
+  FOUNDER_BIO,
+  FOUNDER_BYLINE,
+  FOUNDER_URL,
+  OG_IMAGE,
+  pageUrl,
+} from "@/lib/site";
 
 export const dynamicParams = false;
 
@@ -23,8 +31,9 @@ export async function generateMetadata({
     title: post.title,
     description: post.description,
     alternates: {
-      canonical: `https://vacationphotos.swapp1990.org/blog/${slug}`,
+      canonical: pageUrl(`/blog/${slug}`),
     },
+    robots: post.noindex ? { index: false, follow: true } : undefined,
     openGraph: {
       type: "article",
       title: post.title,
@@ -32,9 +41,20 @@ export async function generateMetadata({
       publishedTime: post.date,
       modifiedTime: post.lastModified || post.date,
       authors: [post.author],
+      images: [{ url: OG_IMAGE.url, width: OG_IMAGE.width, height: OG_IMAGE.height }],
+    },
+    twitter: {
+      images: [OG_IMAGE.url],
     },
   };
 }
+
+const person = {
+  "@type": "Person",
+  name: "Swapnil Sawant",
+  alternateName: "swapp1990",
+  url: FOUNDER_URL,
+};
 
 export default async function BlogPostPage({
   params,
@@ -56,7 +76,6 @@ export default async function BlogPostPage({
     );
   }
 
-  // Dynamic import the MDX module
   let MDXContent: React.ComponentType;
   try {
     const mod = await import(`../../../content/${slug}.mdx`);
@@ -76,15 +95,8 @@ export default async function BlogPostPage({
     description: post.description,
     datePublished: post.date,
     dateModified: post.lastModified || post.date,
-    author: {
-      "@type": "Person",
-      name: post.author,
-    },
-    publisher: {
-      "@type": "Organization",
-      name: "Vacation Photos",
-      url: "https://vacationphotos.swapp1990.org",
-    },
+    author: person,
+    publisher: person,
   };
 
   const faqSchema = post.faq
@@ -102,31 +114,6 @@ export default async function BlogPostPage({
       }
     : null;
 
-  const breadcrumbSchema = {
-    "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
-    itemListElement: [
-      {
-        "@type": "ListItem",
-        position: 1,
-        name: "Home",
-        item: "https://vacationphotos.swapp1990.org",
-      },
-      {
-        "@type": "ListItem",
-        position: 2,
-        name: "Blog",
-        item: "https://vacationphotos.swapp1990.org/blog",
-      },
-      {
-        "@type": "ListItem",
-        position: 3,
-        name: post.title,
-        item: `https://vacationphotos.swapp1990.org/blog/${slug}`,
-      },
-    ],
-  };
-
   return (
     <>
       <script
@@ -139,32 +126,29 @@ export default async function BlogPostPage({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
         />
       )}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
-      />
       <Header />
       <main className="pt-24 pb-16 px-4">
         <article className="max-w-3xl mx-auto">
-          {/* Breadcrumb */}
-          <nav className="text-sm text-[var(--color-text-muted)] mb-6">
-            <a href="/" className="hover:text-white transition-colors">
-              Home
-            </a>{" "}
-            &rsaquo;{" "}
-            <a href="/blog" className="hover:text-white transition-colors">
-              Blog
-            </a>{" "}
-            &rsaquo;{" "}
-            <span className="text-[var(--color-text)]">{post.title}</span>
-          </nav>
+          <Breadcrumbs
+            items={[
+              { name: "Home", href: "/" },
+              { name: "Blog", href: "/blog" },
+              { name: post.title, href: `/blog/${slug}` },
+            ]}
+          />
 
-          {/* Title */}
           <h1 className="text-3xl md:text-4xl font-bold mb-4">{post.title}</h1>
 
-          {/* Meta */}
           <div className="flex flex-wrap items-center gap-3 text-sm text-[var(--color-text-muted)] mb-8">
-            <span>By {post.author}</span>
+            <span>
+              By{" "}
+              <a
+                href={FOUNDER_URL}
+                className="hover:text-white transition-colors"
+              >
+                {FOUNDER_BYLINE}
+              </a>
+            </span>
             <span>&middot;</span>
             <time dateTime={post.date}>
               {new Date(post.date).toLocaleDateString("en-US", {
@@ -188,19 +172,16 @@ export default async function BlogPostPage({
             )}
           </div>
 
-          {/* Answer Capsule */}
           <div className="bg-[var(--color-bg-card)] border-l-4 border-[var(--color-primary)] rounded-r-xl p-6 mb-10">
             <p className="text-[var(--color-text)] leading-relaxed font-medium">
               {post.description}
             </p>
           </div>
 
-          {/* MDX Content */}
           <div className="prose prose-invert max-w-none [&_h2]:text-2xl [&_h2]:font-semibold [&_h2]:mt-10 [&_h2]:mb-4 [&_h3]:text-xl [&_h3]:font-medium [&_h3]:mt-8 [&_h3]:mb-3 [&_p]:text-[var(--color-text-muted)] [&_p]:leading-relaxed [&_p]:mb-4 [&_ul]:text-[var(--color-text-muted)] [&_ul]:space-y-2 [&_ul]:mb-4 [&_ol]:text-[var(--color-text-muted)] [&_ol]:space-y-2 [&_ol]:mb-4 [&_li]:leading-relaxed [&_a]:text-[var(--color-primary-light)] [&_a]:hover:underline [&_blockquote]:border-l-4 [&_blockquote]:border-[var(--color-border)] [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-[var(--color-text-muted)] [&_code]:bg-[var(--color-bg-card)] [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-sm [&_table]:w-full [&_table]:border-collapse [&_th]:border [&_th]:border-[var(--color-border)] [&_th]:px-4 [&_th]:py-2 [&_th]:bg-[var(--color-bg-card)] [&_th]:text-left [&_td]:border [&_td]:border-[var(--color-border)] [&_td]:px-4 [&_td]:py-2 [&_td]:text-[var(--color-text-muted)]">
             <MDXContent />
           </div>
 
-          {/* FAQ Section */}
           {post.faq && post.faq.length > 0 && (
             <section className="mt-16">
               <h2 className="text-2xl font-semibold mb-6">
@@ -227,16 +208,22 @@ export default async function BlogPostPage({
             </section>
           )}
 
-          {/* Author Bio */}
           <div className="mt-16 pt-8 border-t border-[var(--color-border)]">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-full bg-[var(--color-primary)] flex items-center justify-center text-white font-bold text-lg">
                 S
               </div>
               <div>
-                <p className="font-semibold">{post.author}</p>
+                <p className="font-semibold">
+                  <a
+                    href={FOUNDER_URL}
+                    className="hover:text-white transition-colors"
+                  >
+                    {FOUNDER_BYLINE}
+                  </a>
+                </p>
                 <p className="text-sm text-[var(--color-text-muted)]">
-                  Indie iOS developer building apps to organize your life.
+                  {FOUNDER_BIO}
                 </p>
               </div>
             </div>

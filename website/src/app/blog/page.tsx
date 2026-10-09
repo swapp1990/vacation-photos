@@ -2,16 +2,28 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import { getAllPosts } from "@/lib/blog";
+import Breadcrumbs from "@/components/Breadcrumbs";
+import { getAllPosts, hasIndexablePosts } from "@/lib/blog";
+import { OG_IMAGE, pageUrl } from "@/lib/site";
 
-export const metadata: Metadata = {
-  title: "Blog",
-  description:
-    "Tips and guides for organizing vacation photos, travel photography, and making the most of your trip memories.",
-  alternates: {
-    canonical: "https://vacationphotos.swapp1990.org/blog",
-  },
-};
+export function generateMetadata(): Metadata {
+  const indexable = hasIndexablePosts();
+  return {
+    title: "Blog",
+    description:
+      "Tips and guides for organizing vacation photos, travel photography, and making the most of your trip memories.",
+    alternates: {
+      canonical: pageUrl("/blog"),
+    },
+    robots: indexable ? undefined : { index: false, follow: true },
+    openGraph: {
+      images: [{ url: OG_IMAGE.url, width: OG_IMAGE.width, height: OG_IMAGE.height }],
+    },
+    twitter: {
+      images: [OG_IMAGE.url],
+    },
+  };
+}
 
 export default function BlogIndex() {
   const posts = getAllPosts();
@@ -21,6 +33,12 @@ export default function BlogIndex() {
       <Header />
       <main className="pt-24 pb-16 px-4">
         <div className="max-w-3xl mx-auto">
+          <Breadcrumbs
+            items={[
+              { name: "Home", href: "/" },
+              { name: "Blog", href: "/blog" },
+            ]}
+          />
           <h1 className="text-3xl md:text-4xl font-bold mb-4">Blog</h1>
           <p className="text-lg text-[var(--color-text-muted)] mb-12">
             Tips for organizing your travel photos and making the most of your

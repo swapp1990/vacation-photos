@@ -1,70 +1,123 @@
+import type { Metadata } from "next";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import AppStoreBadge from "@/components/AppStoreBadge";
+import Picture from "@/components/Picture";
+import {
+  APP_STORE_URL,
+  HOME_CANONICAL,
+  HOME_DESCRIPTION,
+  OG_IMAGE,
+  SITE_URL,
+} from "@/lib/site";
 
 const FAQ_ITEMS = [
   {
     q: "Is Vacation Photos free?",
-    a: "Yes, Vacation Photos is completely free to download and use. There are no subscriptions, ads, or hidden fees.",
+    a: "Yes. Vacation Photos is free on the App Store. The current version has no ads, no in-app purchases and no account.",
   },
   {
     q: "How does trip detection work?",
-    a: "Vacation Photos uses your photos' location data and timestamps to automatically detect when you were away from home. Photos taken more than 50 miles from your home location are grouped into trips by destination and date.",
+    a: "The app reads the location and date of each photo. Photos taken more than 50 miles from your home location are grouped into trips by place and date.",
   },
   {
-    q: "Does Vacation Photos upload my photos anywhere?",
-    a: "No. All photo processing happens entirely on your device. Your photos, location data, and personal information never leave your iPhone.",
+    q: "Does Vacation Photos upload my photos?",
+    a: "Not to organize them: trip detection and sorting run on your iPhone. Photos are uploaded only if you choose to share a trip. The photos in that trip are resized and stored in Apple iCloud so the people you send the link to can see them.",
   },
   {
     q: "What permissions does the app need?",
-    a: "Vacation Photos needs access to your photo library to scan and organize your vacation photos, and a one-time location check to determine your home location. Both permissions can be revoked anytime in Settings.",
+    a: "Access to your photo library to find your trip photos, and a one-time location check to set your home location. You can turn either off in Settings at any time.",
   },
   {
-    q: "Can I share trip albums with family?",
-    a: "Yes! Once your photos are organized by trip, you can share entire trip albums with family and friends directly from the app.",
+    q: "Can I share a trip with family?",
+    a: "Yes. Share a trip with a link, and the people you send it to can view it without installing the app.",
   },
   {
     q: "Does it work with photos from any camera?",
-    a: "Vacation Photos works with any photos in your iPhone camera roll that have location metadata — whether taken with your iPhone, imported from a DSLR, or saved from messaging apps.",
+    a: "It works with any photo in your iPhone library that has location data, whether it was taken on the iPhone or imported from another camera.",
   },
   {
-    q: "How is this different from Apple Photos?",
-    a: "Apple Photos organizes by date and broad location, but doesn't group photos into trips. Vacation Photos specifically detects vacation trips and groups all photos from each trip together, making it easy to relive and share specific vacations.",
+    q: "Which devices does it run on?",
+    a: "iPhone with iOS 15.1 or later. The App Store also lists it as compatible with iPad and iPod touch.",
+  },
+  {
+    q: "Who makes Vacation Photos?",
+    a: "Swapnil Sawant (swapp1990), a Senior Software Engineer at Phoenix Bioinformatics in the SF Bay Area. More at swapp1990.org.",
   },
 ];
 
 const FEATURES = [
   {
     icon: "🗺️",
-    title: "Auto Trip Detection",
-    desc: "Automatically finds photos taken away from home and groups them by trip destination.",
+    title: "Automatic trip detection",
+    desc: "Finds photos taken 50+ miles from home and groups them into trips by place and date.",
   },
   {
     icon: "📍",
-    title: "Location Sorting",
-    desc: "Photos organized by city and country so you can find that perfect Paris sunset instantly.",
+    title: "Organized by place",
+    desc: "Each trip is labelled by where it happened, so you can jump straight to it.",
   },
   {
     icon: "📅",
-    title: "Timeline View",
-    desc: "See your trips arranged chronologically — from your first weekend getaway to your latest adventure.",
+    title: "Trips in order",
+    desc: "Your trips are listed by date, so you can find a trip by when it happened.",
   },
   {
     icon: "📤",
-    title: "Easy Sharing",
-    desc: "Share entire trip albums with family and friends. No more scrolling through thousands of photos.",
+    title: "Share with a link",
+    desc: "Send a trip to family and friends with a link. They can view it without installing the app.",
   },
   {
     icon: "🔒",
-    title: "100% Private",
-    desc: "All processing happens on your device. Your photos never leave your iPhone.",
+    title: "Sorted on your iPhone",
+    desc: "Trip detection runs on your device. Photos are only uploaded, to Apple iCloud, when you choose to share a trip.",
   },
   {
     icon: "💰",
-    title: "Completely Free",
-    desc: "No subscriptions, no ads, no in-app purchases. Just a simple, useful photo organizer.",
+    title: "Free",
+    desc: "Free on the App Store. No ads, no in-app purchases, no account needed.",
   },
 ];
+
+const STEPS = [
+  {
+    step: "1",
+    title: "Import",
+    desc: "Open the app and allow photo access. It scans your library for you.",
+    src: "/images/opt/screenshot-main-200.webp",
+    srcSet:
+      "/images/opt/screenshot-main-200.webp 200w, /images/opt/screenshot-main-400.webp 400w",
+  },
+  {
+    step: "2",
+    title: "Auto-organize",
+    desc: "Photos are grouped into trips by location and date. Every vacation gets its own album.",
+    src: "/images/opt/screenshot-trip-200.webp",
+    srcSet:
+      "/images/opt/screenshot-trip-200.webp 200w, /images/opt/screenshot-trip-400.webp 400w",
+  },
+  {
+    step: "3",
+    title: "Browse & share",
+    desc: "Tap a trip to look back through it, or share it with a link.",
+    src: "/images/opt/screenshot-photo-200.webp",
+    srcSet:
+      "/images/opt/screenshot-photo-200.webp 200w, /images/opt/screenshot-photo-400.webp 400w",
+  },
+];
+
+export const metadata: Metadata = {
+  description: HOME_DESCRIPTION,
+  openGraph: {
+    url: HOME_CANONICAL,
+    description: HOME_DESCRIPTION,
+    images: [{ url: OG_IMAGE.url, width: OG_IMAGE.width, height: OG_IMAGE.height }],
+  },
+  twitter: {
+    description: HOME_DESCRIPTION,
+    images: [OG_IMAGE.url],
+  },
+};
 
 export default function Home() {
   const faqSchema = {
@@ -84,25 +137,52 @@ export default function Home() {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
     name: "Vacation Photos",
-    operatingSystem: "iOS",
+    operatingSystem: "iOS 15.1 or later",
     applicationCategory: "PhotographyApplication",
+    softwareVersion: "1.1.7",
     offers: {
       "@type": "Offer",
       price: "0",
       priceCurrency: "USD",
     },
-    aggregateRating: {
-      "@type": "AggregateRating",
-      ratingValue: "5.0",
-      ratingCount: "15",
+    url: SITE_URL,
+    downloadUrl: APP_STORE_URL,
+    installUrl: APP_STORE_URL,
+    author: {
+      "@type": "Person",
+      name: "Swapnil Sawant",
+      alternateName: "swapp1990",
+      url: "https://swapp1990.org/",
     },
-    url: "https://apps.apple.com/app/id6756803475",
-    description:
-      "Organize your vacation photos by trip automatically. Import from your camera roll, auto-sort by destination and date, and share trip albums.",
+    description: HOME_DESCRIPTION,
+  };
+
+  const personSchema = {
+    "@context": "https://schema.org",
+    "@type": "Person",
+    name: "Swapnil Sawant",
+    alternateName: "swapp1990",
+    url: "https://swapp1990.org/",
+    jobTitle: "Senior Software Engineer",
+    worksFor: {
+      "@type": "Organization",
+      name: "Phoenix Bioinformatics",
+    },
+    homeLocation: {
+      "@type": "Place",
+      name: "SF Bay Area",
+    },
+    sameAs: [
+      "https://swapp1990.org/",
+      "https://github.com/swapp1990",
+      "https://linkedin.com/in/swapnil-sawant-b038b480",
+      "https://x.com/swapp19902",
+    ],
   };
 
   return (
     <>
+      <link rel="canonical" href={HOME_CANONICAL} />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(appSchema) }}
@@ -111,10 +191,13 @@ export default function Home() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
       />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(personSchema) }}
+      />
       <Header />
 
       <main className="pt-16">
-        {/* Hero */}
         <section className="py-20 md:py-32 px-4">
           <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center gap-12">
             <div className="flex-1 text-center md:text-left">
@@ -125,9 +208,8 @@ export default function Home() {
                 </span>
               </h1>
               <p className="text-lg md:text-xl text-[var(--color-text-muted)] mb-8 max-w-lg">
-                Stop scrolling through thousands of photos to find that one
-                beach sunset. Vacation Photos auto-sorts your camera roll by
-                trip, so every memory is right where you expect it.
+                Vacation Photos sorts your camera roll into trips by date and
+                place, on your iPhone. Share a trip with a link.
               </p>
               <div className="flex flex-col sm:flex-row items-center gap-4 justify-center md:justify-start">
                 <AppStoreBadge />
@@ -135,78 +217,59 @@ export default function Home() {
                   Free on iPhone &middot; No account needed
                 </span>
               </div>
-              <div className="mt-6 flex items-center gap-2 justify-center md:justify-start">
-                <div className="flex text-[var(--color-accent)]">
-                  {"★★★★★".split("").map((s, i) => (
-                    <span key={i}>{s}</span>
-                  ))}
-                </div>
-                <span className="text-[var(--color-text-muted)] text-sm">
-                  5.0 on the App Store
-                </span>
-              </div>
+              <p className="mt-6 text-[var(--color-text-muted)] text-sm">
+                Rated 5.0 on the App Store (1 rating)
+              </p>
             </div>
             <div className="flex-1 flex justify-center">
-              <img
-                src="/images/screenshot-main.png"
+              <Picture
+                src="/images/opt/screenshot-main-320.webp"
+                srcSet="/images/opt/screenshot-main-320.webp 320w, /images/opt/screenshot-main-640.webp 640w, /images/opt/screenshot-main-960.webp 960w"
+                sizes="(min-width: 768px) 320px, 280px"
+                width={320}
+                height={694}
                 alt="Vacation Photos app showing trips organized by destination"
-                className="w-[280px] md:w-[320px] rounded-3xl shadow-2xl shadow-black/40"
+                className="w-[280px] md:w-[320px] h-auto rounded-3xl shadow-2xl shadow-black/40"
+                loading="eager"
+                fetchPriority="high"
               />
             </div>
           </div>
         </section>
 
-        {/* Problem */}
         <section className="py-16 px-4 bg-[var(--color-bg-card)]">
           <div className="max-w-3xl mx-auto text-center">
             <h2 className="text-3xl md:text-4xl font-bold mb-6">
               Your camera roll is a mess after every trip
             </h2>
             <p className="text-lg text-[var(--color-text-muted)] leading-relaxed">
-              You come home from vacation with hundreds of photos mixed in with
-              screenshots, work photos, and random saves. Finding that perfect
-              shot from day three in Rome? Good luck scrolling through 10,000
-              photos. Apple Photos sorts by date, but it doesn&apos;t know which
-              photos are from which trip.
+              After a trip, the photos you care about are mixed in with
+              screenshots, receipts and everyday shots. Scrolling back by date
+              to find one trip takes a while.
             </p>
           </div>
         </section>
 
-        {/* How It Works */}
         <section className="py-20 px-4">
           <div className="max-w-5xl mx-auto">
             <h2 className="text-3xl md:text-4xl font-bold text-center mb-16">
               Three steps. That&apos;s it.
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {[
-                {
-                  step: "1",
-                  title: "Import",
-                  desc: "Open the app and it scans your camera roll automatically. No manual selecting.",
-                  img: "/images/screenshot-main.png",
-                },
-                {
-                  step: "2",
-                  title: "Auto-organize",
-                  desc: "Photos are grouped into trips by location and date. Every vacation gets its own album.",
-                  img: "/images/screenshot-trip.png",
-                },
-                {
-                  step: "3",
-                  title: "Browse & share",
-                  desc: "Tap any trip to relive the memories. Share full trip albums with family in one tap.",
-                  img: "/images/screenshot-photo.png",
-                },
-              ].map((item) => (
+              {STEPS.map((item) => (
                 <div key={item.step} className="text-center">
                   <div className="w-12 h-12 rounded-full bg-[var(--color-primary)] text-white text-xl font-bold flex items-center justify-center mx-auto mb-4">
                     {item.step}
                   </div>
-                  <img
-                    src={item.img}
+                  <Picture
+                    src={item.src}
+                    srcSet={item.srcSet}
+                    sizes="200px"
+                    width={200}
+                    height={433}
                     alt={item.title}
-                    className="w-[200px] rounded-2xl mx-auto mb-4 shadow-lg shadow-black/30"
+                    className="w-[200px] h-auto rounded-2xl mx-auto mb-4 shadow-lg shadow-black/30"
+                    loading="lazy"
                   />
                   <h3 className="text-xl font-semibold mb-2">{item.title}</h3>
                   <p className="text-[var(--color-text-muted)] text-sm">
@@ -218,11 +281,11 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Features */}
         <section className="py-20 px-4 bg-[var(--color-bg-card)]">
           <div className="max-w-5xl mx-auto">
             <h2 className="text-3xl md:text-4xl font-bold text-center mb-16">
-              Everything you need, nothing you don&apos;t
+              Sorts your camera roll into trips by date and place, on your
+              iPhone. Free on iOS.
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {FEATURES.map((f) => (
@@ -241,49 +304,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Social Proof */}
-        <section className="py-20 px-4">
-          <div className="max-w-4xl mx-auto text-center">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              Loved by travelers
-            </h2>
-            <div className="flex items-center justify-center gap-2 mb-12">
-              <div className="flex text-[var(--color-accent)] text-2xl">
-                {"★★★★★".split("").map((s, i) => (
-                  <span key={i}>{s}</span>
-                ))}
-              </div>
-              <span className="text-lg text-[var(--color-text-muted)]">
-                5.0 rating on the App Store
-              </span>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <blockquote className="bg-[var(--color-bg-card)] rounded-xl p-6 border border-[var(--color-border)] text-left">
-                <p className="text-[var(--color-text-muted)] mb-3 italic">
-                  &ldquo;Finally an app that just organizes my vacation photos
-                  without trying to do a million other things. Simple and
-                  works.&rdquo;
-                </p>
-                <cite className="text-sm text-[var(--color-text-muted)] not-italic">
-                  — App Store Review
-                </cite>
-              </blockquote>
-              <blockquote className="bg-[var(--color-bg-card)] rounded-xl p-6 border border-[var(--color-border)] text-left">
-                <p className="text-[var(--color-text-muted)] mb-3 italic">
-                  &ldquo;Used it after our Europe trip and had all 2,000 photos
-                  sorted by city in seconds. Sharing albums with family was so
-                  easy.&rdquo;
-                </p>
-                <cite className="text-sm text-[var(--color-text-muted)] not-italic">
-                  — App Store Review
-                </cite>
-              </blockquote>
-            </div>
-          </div>
-        </section>
-
-        {/* FAQ */}
-        <section className="py-20 px-4 bg-[var(--color-bg-card)]">
+        <section id="faq" className="py-20 px-4 bg-[var(--color-bg-card)]">
           <div className="max-w-3xl mx-auto">
             <h2 className="text-3xl md:text-4xl font-bold text-center mb-12">
               Frequently asked questions
@@ -309,13 +330,12 @@ export default function Home() {
           </div>
         </section>
 
-        {/* CTA */}
         <section className="py-20 px-4 text-center">
           <h2 className="text-3xl md:text-4xl font-bold mb-4">
             Start organizing your vacation photos
           </h2>
           <p className="text-lg text-[var(--color-text-muted)] mb-8">
-            Free. Private. No account required.
+            Free. No ads. No account required.
           </p>
           <AppStoreBadge />
         </section>

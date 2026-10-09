@@ -1,13 +1,21 @@
 import type { Metadata } from "next";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import Breadcrumbs from "@/components/Breadcrumbs";
+import { OG_IMAGE, pageUrl } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Support",
   description:
     "Get help with Vacation Photos. Report bugs, request features, or ask questions.",
   alternates: {
-    canonical: "https://vacationphotos.swapp1990.org/support",
+    canonical: pageUrl("/support"),
+  },
+  openGraph: {
+    images: [{ url: OG_IMAGE.url, width: OG_IMAGE.width, height: OG_IMAGE.height }],
+  },
+  twitter: {
+    images: [OG_IMAGE.url],
   },
 };
 
@@ -17,6 +25,12 @@ export default function SupportPage() {
       <Header />
       <main className="pt-24 pb-16 px-4">
         <div className="max-w-3xl mx-auto">
+          <Breadcrumbs
+            items={[
+              { name: "Home", href: "/" },
+              { name: "Support", href: "/support" },
+            ]}
+          />
           <h1 className="text-3xl md:text-4xl font-bold mb-4">Support</h1>
           <p className="text-lg text-[var(--color-text-muted)] mb-12">
             Need help with Vacation Photos? We&apos;re here for you.
@@ -85,8 +99,9 @@ export default function SupportPage() {
                     Does the app work offline?
                   </strong>
                   <br />
-                  Yes! All processing happens on your device. No internet
-                  connection is needed after the initial download.
+                  Trip sorting runs on your iPhone. Turning photo locations
+                  into place names, searching for a place, and sharing a trip
+                  need an internet connection.
                 </li>
               </ul>
             </div>
