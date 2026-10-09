@@ -1,14 +1,11 @@
 import type { Metadata } from "next";
 import Script from "next/script";
 import { SWAP_ANALYTICS_BEACON_SCRIPT } from "@/lib/swapAnalyticsBeacon";
+import { HOME_DESCRIPTION, OG_IMAGE, SITE_URL } from "@/lib/site";
 import "./globals.css";
 
 const GA_MEASUREMENT_ID = "G-7RQX87Q7M9";
-
-const SITE_URL = "https://vacationphotos.swapp1990.org";
 const APP_NAME = "Vacation Photos";
-const APP_DESCRIPTION =
-  "Organize your vacation photos by trip automatically. Import from your camera roll, auto-sort by destination and date, and share beautiful trip albums — all on your iPhone.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -16,24 +13,28 @@ export const metadata: Metadata = {
     default: `${APP_NAME} — Organize Your Vacation Photos by Trip`,
     template: `%s | ${APP_NAME}`,
   },
-  description: APP_DESCRIPTION,
+  description: HOME_DESCRIPTION,
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "32x32" },
+      { url: "/images/icon-192.png", type: "image/png", sizes: "192x192" },
+    ],
+    apple: { url: "/apple-touch-icon.png" },
+  },
   openGraph: {
     type: "website",
     locale: "en_US",
     url: SITE_URL,
     siteName: APP_NAME,
     title: `${APP_NAME} — Organize Your Vacation Photos by Trip`,
-    description: APP_DESCRIPTION,
-    images: [{ url: "/images/og-image.png", width: 1200, height: 630 }],
+    description: HOME_DESCRIPTION,
+    images: [{ url: OG_IMAGE.url, width: OG_IMAGE.width, height: OG_IMAGE.height }],
   },
   twitter: {
     card: "summary_large_image",
     title: `${APP_NAME} — Organize Your Vacation Photos by Trip`,
-    description: APP_DESCRIPTION,
-    images: ["/images/og-image.png"],
-  },
-  alternates: {
-    canonical: SITE_URL,
+    description: HOME_DESCRIPTION,
+    images: [OG_IMAGE.url],
   },
 };
 
@@ -47,7 +48,7 @@ export default function RootLayout({
       <head>
         <Script
           src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
-          strategy="afterInteractive"
+          strategy="lazyOnload"
         />
         <Script id="gtag-init" strategy="afterInteractive">
           {`
@@ -64,7 +65,14 @@ export default function RootLayout({
           name="viewport"
           content="width=device-width, initial-scale=1, maximum-scale=1"
         />
-        <link rel="icon" href="/images/app-icon.png" />
+        <link rel="icon" href="/favicon.ico" sizes="32x32" />
+        <link
+          rel="icon"
+          type="image/png"
+          href="/images/icon-192.png"
+          sizes="192x192"
+        />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
       </head>
       <body className="antialiased min-h-screen">{children}</body>
     </html>

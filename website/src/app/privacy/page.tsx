@@ -1,13 +1,21 @@
 import type { Metadata } from "next";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import Breadcrumbs from "@/components/Breadcrumbs";
+import { OG_IMAGE, pageUrl } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
   description:
     "Vacation Photos privacy policy. All data stays on your device — no uploads, no tracking, no accounts.",
   alternates: {
-    canonical: "https://vacationphotos.swapp1990.org/privacy",
+    canonical: pageUrl("/privacy"),
+  },
+  openGraph: {
+    images: [{ url: OG_IMAGE.url, width: OG_IMAGE.width, height: OG_IMAGE.height }],
+  },
+  twitter: {
+    images: [OG_IMAGE.url],
   },
 };
 
@@ -17,6 +25,12 @@ export default function PrivacyPage() {
       <Header />
       <main className="pt-24 pb-16 px-4">
         <article className="max-w-3xl mx-auto prose prose-invert">
+          <Breadcrumbs
+            items={[
+              { name: "Home", href: "/" },
+              { name: "Privacy Policy", href: "/privacy" },
+            ]}
+          />
           <h1 className="text-3xl md:text-4xl font-bold mb-2">
             Privacy Policy
           </h1>
