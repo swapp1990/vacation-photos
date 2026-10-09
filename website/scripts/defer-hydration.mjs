@@ -6,7 +6,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const outDir = path.join(__dirname, "..", "out");
 const MARKER = "<!--vp-defer-hydration-->";
 const LOADER =
-  '<script>(function(){var s=SRCS,done=0,l=0,pt=0,w=0;function go(){if(done)return;done=1;document.documentElement.setAttribute("data-vp-painted","");s.forEach(function(u){var e=document.createElement("script");e.src=u;e.async=false;document.body.appendChild(e);});}function chk(){if(l&&pt&&!w){w=1;requestAnimationFrame(function(){requestAnimationFrame(function(){setTimeout(go,50);});});}}addEventListener("load",function(){l=1;chk();});try{new PerformanceObserver(function(li){if(li.getEntriesByName("first-contentful-paint").length){pt=1;chk();}}).observe({type:"paint",buffered:true});}catch(e){pt=1;}setTimeout(go,4000);})();</script>';
+  '<script>(function(){var s=SRCS,done=0,l=0,pt=0,w=0;function go(){if(done)return;done=1;s.forEach(function(u){var e=document.createElement("script");e.src=u;e.async=false;document.body.appendChild(e);});}function chk(){if(l&&pt&&!w){w=1;requestAnimationFrame(function(){requestAnimationFrame(function(){setTimeout(go,50);});});}}addEventListener("load",function(){l=1;chk();});try{new PerformanceObserver(function(li){if(li.getEntriesByName("first-contentful-paint").length){pt=1;chk();}}).observe({type:"paint",buffered:true});}catch(e){pt=1;}setTimeout(go,4000);})();</script>';
 
 async function walkHtml(dir) {
   const entries = await fs.readdir(dir, { withFileTypes: true });
