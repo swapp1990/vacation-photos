@@ -237,7 +237,7 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="py-16 px-4 bg-[var(--color-bg-card)]">
+        <section className="vp-cv-2 py-16 px-4 bg-[var(--color-bg-card)]">
           <div className="max-w-3xl mx-auto text-center">
             <h2 className="text-3xl md:text-4xl font-bold mb-6">
               Your camera roll is a mess after every trip
@@ -250,7 +250,7 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="py-20 px-4">
+        <section className="vp-cv-3 py-20 px-4">
           <div className="max-w-5xl mx-auto">
             <h2 className="text-3xl md:text-4xl font-bold text-center mb-16">
               Three steps. That&apos;s it.
@@ -281,7 +281,7 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="py-20 px-4 bg-[var(--color-bg-card)]">
+        <section className="vp-cv-4 py-20 px-4 bg-[var(--color-bg-card)]">
           <div className="max-w-5xl mx-auto">
             <h2 className="text-3xl md:text-4xl font-bold text-center mb-16">
               Sorts your camera roll into trips by date and place, on your
@@ -304,7 +304,7 @@ export default function Home() {
           </div>
         </section>
 
-        <section id="faq" className="py-20 px-4 bg-[var(--color-bg-card)]">
+        <section id="faq" className="vp-cv-5 py-20 px-4 bg-[var(--color-bg-card)]">
           <div className="max-w-3xl mx-auto">
             <h2 className="text-3xl md:text-4xl font-bold text-center mb-12">
               Frequently asked questions
@@ -330,7 +330,7 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="py-20 px-4 text-center">
+        <section className="vp-cv-6 py-20 px-4 text-center">
           <h2 className="text-3xl md:text-4xl font-bold mb-4">
             Start organizing your vacation photos
           </h2>

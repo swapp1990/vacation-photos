@@ -20,3 +20,22 @@ body {
   background: var(--color-primary);
   color: white;
 }
+
+/* vp3: lazy-render below-the-fold home sections; intrinsic sizes = measured content heights (keeps page height stable) */
+.vp-cv-2,.vp-cv-3,.vp-cv-4,.vp-cv-5,.vp-cv-6{content-visibility:auto}
+.vp-cv-2{contain-intrinsic-size:auto 213px}
+.vp-cv-3{contain-intrinsic-size:auto 1912.5px}
+.vp-cv-4{contain-intrinsic-size:auto 1391.75px}
+.vp-cv-5{contain-intrinsic-size:auto 858px}
+.vp-cv-6{contain-intrinsic-size:auto 205px}
+@media (min-width:768px){
+.vp-cv-2{contain-intrinsic-size:auto 122.5px}
+.vp-cv-3{contain-intrinsic-size:auto 713px}
+.vp-cv-4{contain-intrinsic-size:auto 753.25px}
+.vp-cv-5{contain-intrinsic-size:auto 784px}
+.vp-cv-6{contain-intrinsic-size:auto 173px}
+}
+@media (min-width:1024px){
+.vp-cv-3{contain-intrinsic-size:auto 693px}
+.vp-cv-4{contain-intrinsic-size:auto 572.5px}
+}
