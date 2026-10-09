@@ -99,8 +99,9 @@ export default function SupportPage() {
                     Does the app work offline?
                   </strong>
                   <br />
-                  Yes! All processing happens on your device. No internet
-                  connection is needed after the initial download.
+                  Trip sorting runs on your iPhone. Turning photo locations
+                  into place names, searching for a place, and sharing a trip
+                  need an internet connection.
                 </li>
               </ul>
             </div>
