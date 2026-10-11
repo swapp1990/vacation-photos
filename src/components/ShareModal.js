@@ -21,7 +21,7 @@ import { colors, spacing, typography, borderRadius } from '../styles/theme';
 import { shareVacationCluster, MAX_PHOTOS, getUserDisplayName, setUserDisplayName, getUploadedVacations, getClusterKey } from '../services/photoUploadService';
 import { checkCloudKitAvailability, generateShareLink } from '../services/cloudKitService';
 import { track, trackVacationShared, Events } from '../utils/analytics';
-import { considerRatingPrompt } from '../utils/reviewPrompt';
+import { considerRatingPrompt, flushPendingReviewRequest } from '../utils/reviewPrompt';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const PREVIEW_PHOTO_SIZE = 80;
@@ -70,6 +70,11 @@ export default function ShareModal({ visible, onClose, cluster, onShareComplete 
 
   const dateRange = formatDateRange(cluster?.startDate, cluster?.endDate);
 
+  const handleClose = () => {
+    onClose?.();
+    flushPendingReviewRequest();
+  };
+
   useEffect(() => {
     if (visible) {
       setSelectedContact(null);
@@ -80,6 +85,7 @@ export default function ShareModal({ visible, onClose, cluster, onShareComplete 
       loadPreviewPhotos();
     } else {
       setSearchQuery('');
+      flushPendingReviewRequest();
     }
   }, [visible]);
 
@@ -91,7 +97,7 @@ export default function ShareModal({ visible, onClose, cluster, onShareComplete 
 
     Clipboard.setString(shareMessage);
     track(Events.SHARE_LINK_COPIED);
-    considerRatingPrompt('share_success');
+    considerRatingPrompt('first_share');
     Alert.alert('Copied!', 'Link copied to clipboard');
   };
 
@@ -267,7 +273,7 @@ export default function ShareModal({ visible, onClose, cluster, onShareComplete 
         onShareComplete?.();
         // Track share as the north-star event + positive moment for review prompt
         trackVacationShared(photosToShare);
-        considerRatingPrompt('share_success');
+        considerRatingPrompt('first_share');
         // Go to contacts screen to select who to send to
         setScreen(SCREEN.CONTACTS);
         loadContacts();
@@ -302,8 +308,8 @@ export default function ShareModal({ visible, onClose, cluster, onShareComplete 
       if (canOpen) {
         await Linking.openURL(whatsappUrl);
         track(Events.SHARE_MESSAGE_SENT, { channel: 'whatsapp' });
-        considerRatingPrompt('share_success');
-        onClose();
+        await considerRatingPrompt('first_share');
+        handleClose();
       } else {
         Alert.alert(
           'WhatsApp Not Available',
@@ -316,8 +322,7 @@ export default function ShareModal({ visible, onClose, cluster, onShareComplete 
                 const smsUrl = `sms:${phoneNumber}&body=${encodeURIComponent(shareMessage)}`;
                 Linking.openURL(smsUrl);
                 track(Events.SHARE_MESSAGE_SENT, { channel: 'sms' });
-                considerRatingPrompt('share_success');
-                onClose();
+                considerRatingPrompt('first_share').then(() => handleClose());
               },
             },
           ]
@@ -352,7 +357,7 @@ export default function ShareModal({ visible, onClose, cluster, onShareComplete 
       <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
         <View style={styles.container}>
           <View style={styles.header}>
-            <TouchableOpacity onPress={onClose}>
+            <TouchableOpacity onPress={handleClose}>
               <Text style={styles.cancelButton}>Cancel</Text>
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Share Vacation</Text>
@@ -447,7 +452,7 @@ export default function ShareModal({ visible, onClose, cluster, onShareComplete 
       <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
         <View style={styles.container}>
           <View style={styles.header}>
-            <TouchableOpacity onPress={onClose}>
+            <TouchableOpacity onPress={handleClose}>
               <Text style={styles.cancelButton}>Done</Text>
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Ready to Share</Text>
@@ -493,7 +498,7 @@ export default function ShareModal({ visible, onClose, cluster, onShareComplete 
       <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
         <View style={styles.container}>
           <View style={styles.header}>
-            <TouchableOpacity onPress={onClose}>
+            <TouchableOpacity onPress={handleClose}>
               <Text style={styles.cancelButton}>Cancel</Text>
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Share Trip</Text>
@@ -535,7 +540,7 @@ export default function ShareModal({ visible, onClose, cluster, onShareComplete 
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
       <View style={styles.container}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={onClose}>
+          <TouchableOpacity onPress={handleClose}>
             <Text style={styles.cancelButton}>Done</Text>
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Share</Text>
