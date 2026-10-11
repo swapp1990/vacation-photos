@@ -63,8 +63,8 @@ import {
   useSharedVacations,
   useFaceDetection,
 } from './src/hooks';
-import { initAnalytics, track, trackNorthStar, Events } from './src/utils/analytics';
-import { recordPositiveMoment, resetSessionFlag } from './src/utils/reviewPrompt';
+import { initAnalytics, track, trackSessionStart, trackFirstTripShown, hashShareId, Events } from './src/utils/analytics';
+import { considerRatingPrompt } from './src/utils/reviewPrompt';
 
 // Debug mode - set to false for production
 const DEBUG_MODE = __DEV__;
@@ -275,9 +275,11 @@ export default function App() {
 
   // Initialize app on mount
   useEffect(() => {
-    initAnalytics();
-    track(Events.APP_OPENED);
-    resetSessionFlag();
+    (async () => {
+      await initAnalytics();
+      track(Events.APP_OPENED);
+      trackSessionStart();
+    })();
     initializeApp();
   }, []);
 
@@ -290,7 +292,7 @@ export default function App() {
         if (pending && pending.shareId) {
           console.log('[App] Found pending share from App Clip:', pending.shareId);
           console.log('[App] Context:', pending.locationName, pending.sharedBy, pending.thumbnails?.length);
-          track(Events.APP_CLIP_OPENED, { shareId: pending.shareId, sharedBy: pending.sharedBy });
+          track(Events.APP_CLIP_OPENED, { share_id_hash: hashShareId(pending.shareId) });
           setPendingAppClipShare(pending.shareId);
           // Store full context for contextual onboarding
           setAppClipContext(pending);
@@ -324,7 +326,7 @@ export default function App() {
     // Only trigger when onboarding is complete and we have a pending share
     if (showOnboarding === false && !showLocationSelection && pendingAppClipShare && hasPermission === true) {
       console.log('[App] Onboarding complete, showing shared vacation:', pendingAppClipShare);
-      track(Events.SHARED_ALBUM_OPENED, { shareId: pendingAppClipShare, source: 'app_clip' });
+      track(Events.SHARED_ALBUM_OPENED, { share_id_hash: hashShareId(pendingAppClipShare), source: 'app_clip' });
       setSharedVacationId(pendingAppClipShare);
       setShowAppClipPrompt(true);
       // Clear so we don't show again
@@ -345,6 +347,12 @@ export default function App() {
       }
     }
   }, [editedLocations, clusters, applyEditedLocations, updateClusters]);
+
+  useEffect(() => {
+    if (clusters && clusters.length > 0) {
+      trackFirstTripShown(clusters.length);
+    }
+  }, [clusters]);
 
   // ==========================================
   // HANDLERS
@@ -429,7 +437,7 @@ export default function App() {
     if (pendingVacations.length === 1) {
       markVacationAsViewed(pendingVacations[0].shareId);
       setSharedVacationId(pendingVacations[0].shareId);
-      track(Events.SHARED_ALBUM_OPENED, { shareId: pendingVacations[0].shareId, source: 'card' });
+      track(Events.SHARED_ALBUM_OPENED, { share_id_hash: hashShareId(pendingVacations[0].shareId), source: 'card' });
     } else {
       setShowSharedVacationsList(true);
     }
@@ -439,7 +447,7 @@ export default function App() {
   const handleSelectSharedVacation = useCallback((shareId) => {
     setShowSharedVacationsList(false);
     setSharedVacationId(shareId);
-    track(Events.SHARED_ALBUM_OPENED, { shareId, source: 'list' });
+    track(Events.SHARED_ALBUM_OPENED, { share_id_hash: hashShareId(shareId), source: 'list' });
   }, []);
 
   // Search for locations using Nominatim API
@@ -549,8 +557,8 @@ export default function App() {
 
   const handleViewAll = useCallback((cluster) => {
     setSelectedCluster(cluster);
-    track(Events.TRIP_VIEWED, { location: cluster.locationName || 'unknown' });
-    recordPositiveMoment();
+    track(Events.TRIP_VIEWED);
+    considerRatingPrompt('trip_open', { tripId: cluster?.id });
   }, []);
 
   // Handle location edit from ClusterCard

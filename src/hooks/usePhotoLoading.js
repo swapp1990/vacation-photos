@@ -21,6 +21,7 @@ import {
   MILES_FROM_HOME,
   KM_FROM_HOME,
 } from '../utils/clusteringUtils';
+import { trackPermissionResult } from '../utils/analytics';
 
 const ONBOARDING_KEY = 'onboarding_complete';
 const REFRESH_DEBOUNCE_MS = 30000; // 30 seconds minimum between auto-refreshes
@@ -105,6 +106,7 @@ export function usePhotoLoading() {
     }
 
     const { status: mediaStatus } = await MediaLibrary.requestPermissionsAsync();
+    trackPermissionResult(mediaStatus);
     setHasPermission(mediaStatus === 'granted' && locationStatus === 'granted');
 
     return {

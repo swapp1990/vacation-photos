@@ -1,89 +1,102 @@
 /**
  * In-App Review Prompt
  *
- * Tracks "positive moments" (trip viewed, vacation shared) across unique
- * sessions. Triggers the native App Store review prompt after 3 unique
- * sessions with positive moments. No minimum-days gate — can prompt on
- * day one if user has 3 separate sessions. 90-day cooldown after prompt.
+ * Native StoreKit sheet only, after a successful share (link created or
+ * message sent) or the 2nd open of the same trip. Requires 2 distinct
+ * local calendar days of use, at most once per app version, 90-day
+ * cooldown. Never at launch. Fail-soft.
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as StoreReview from 'expo-store-review';
 import { track, Events } from './analytics';
+import { decideRatingPrompt, localCalendarDay } from './reviewPromptDecision';
 
-const SESSION_COUNT_KEY = '_review_session_count';
-const CURRENT_SESSION_KEY = '_review_session_recorded';
-const LAST_PROMPT_KEY = '_review_last_prompt';
-const COOLDOWN_MS = 90 * 24 * 60 * 60 * 1000; // 90 days
-const PROMPT_THRESHOLD = 3; // 3 unique sessions with positive moments
+const STATE_KEY = '_review_prompt_state';
+
+function getAppVersion() {
+  try {
+    const Constants = require('expo-constants').default;
+    const v = Constants.expoConfig?.version || Constants.nativeAppVersion;
+    if (v) return String(v);
+  } catch (e) {
+    // expo-constants unavailable in tests
+  }
+  try {
+    return require('../../app.json').expo.version;
+  } catch (e) {
+    return 'unknown';
+  }
+}
+
+async function loadState() {
+  try {
+    const raw = await AsyncStorage.getItem(STATE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch (e) {
+    return {};
+  }
+}
+
+async function saveState(state) {
+  try {
+    await AsyncStorage.setItem(STATE_KEY, JSON.stringify(state));
+  } catch (e) {
+    // Fail-soft: missing persistence must not crash the app
+  }
+}
 
 /**
- * Record a positive moment and potentially trigger a review prompt.
- * Only counts once per app session (unique sessions).
- * Call this after trip viewed or vacation shared.
+ * Consider showing the native review prompt.
+ * @param {'share_success'|'trip_open'|'launch'|'other'} trigger
+ * @param {{ tripId?: string, now?: number, appVersion?: string, storeKitAvailable?: boolean, calendarDay?: string }} [extras]
  */
-export async function recordPositiveMoment() {
+export async function considerRatingPrompt(trigger, extras = {}) {
   try {
-    // Check cooldown
-    const lastPrompt = await AsyncStorage.getItem(LAST_PROMPT_KEY);
-    if (lastPrompt) {
-      const elapsed = Date.now() - parseInt(lastPrompt, 10);
-      if (elapsed < COOLDOWN_MS) {
-        return; // Still in cooldown
-      }
-    }
+    const now = extras.now ?? Date.now();
+    const appVersion = extras.appVersion ?? getAppVersion();
+    const calendarDay = extras.calendarDay ?? localCalendarDay(now);
+    const storeKitAvailable =
+      extras.storeKitAvailable ?? (await StoreReview.isAvailableAsync());
+    const state = await loadState();
 
-    // Only count once per session
-    const alreadyRecorded = await AsyncStorage.getItem(CURRENT_SESSION_KEY);
-    if (alreadyRecorded === 'true') {
-      return; // Already counted this session
-    }
+    const decision = decideRatingPrompt({
+      state,
+      trigger,
+      tripId: extras.tripId,
+      now,
+      appVersion,
+      storeKitAvailable,
+      calendarDay,
+    });
 
-    // Mark this session as recorded
-    await AsyncStorage.setItem(CURRENT_SESSION_KEY, 'true');
+    console.log(
+      '[ReviewPrompt] decision',
+      `action=${decision.action}`,
+      `trigger=${trigger}`,
+      `reason=${decision.reason || 'none'}`,
+      `days=${decision.nextState.distinctDays.length}`,
+      `version=${appVersion}`,
+      extras.tripId ? 'trip=set' : 'trip=none'
+    );
 
-    // Increment unique session counter
-    const raw = await AsyncStorage.getItem(SESSION_COUNT_KEY);
-    const count = (parseInt(raw, 10) || 0) + 1;
-    await AsyncStorage.setItem(SESSION_COUNT_KEY, String(count));
-
-    if (count >= PROMPT_THRESHOLD) {
-      await triggerReviewPrompt();
+    if (decision.action === 'prompt') {
+      track(Events.RATING_PROMPT_ELIGIBLE);
+      await StoreReview.requestReview();
+      await saveState({
+        ...decision.nextState,
+        lastPromptAt: now,
+        lastPromptVersion: appVersion,
+      });
+      track(Events.REVIEW_PROMPTED);
+      console.log('[ReviewPrompt] Review prompt shown');
+    } else {
+      await saveState(decision.nextState);
+      track(Events.RATING_PROMPT_SKIPPED, { reason: decision.reason });
     }
   } catch (e) {
-    // Never crash the app for review logic
     console.warn('[ReviewPrompt] Error:', e);
-  }
-}
-
-/**
- * Call on app startup to reset the per-session flag.
- */
-export async function resetSessionFlag() {
-  try {
-    await AsyncStorage.removeItem(CURRENT_SESSION_KEY);
-  } catch (e) {
-    // Ignore
-  }
-}
-
-async function triggerReviewPrompt() {
-  try {
-    const available = await StoreReview.isAvailableAsync();
-    if (!available) {
-      console.log('[ReviewPrompt] StoreReview not available on this device');
-      return;
-    }
-
-    await StoreReview.requestReview();
-
-    // Record prompt time and reset counter
-    await AsyncStorage.setItem(LAST_PROMPT_KEY, String(Date.now()));
-    await AsyncStorage.setItem(SESSION_COUNT_KEY, '0');
-
-    track(Events.REVIEW_PROMPTED);
-    console.log('[ReviewPrompt] Review prompt shown');
-  } catch (e) {
-    console.warn('[ReviewPrompt] Failed to request review:', e);
   }
 }
