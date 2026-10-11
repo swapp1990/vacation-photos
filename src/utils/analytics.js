@@ -11,6 +11,7 @@
 import { initAnalytics as _init, track as _track, getInstalledAt } from './telemetry-client';
 import { hashShareId } from './hashShareId';
 import { localCalendarDay } from './reviewPromptDecision';
+import { trackVacationShared as emitVacationShared } from './shareEvents';
 
 const PII_KEYS = new Set([
   'location',
@@ -56,7 +57,7 @@ export function trackNorthStar(metadata = {}) {
 
 /** Successful share: one vp_vacation_shared with is_north_star. */
 export function trackVacationShared(photos) {
-  trackNorthStar({ photos });
+  emitVacationShared(photos, track);
 }
 
 export { hashShareId };
