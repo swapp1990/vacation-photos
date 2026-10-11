@@ -1,11 +1,6 @@
-jest.mock('../telemetry-client', () => ({
-  initAnalytics: jest.fn(),
-  track: jest.fn(),
-  getInstalledAt: jest.fn(),
-}));
-
-const { track: mockTrack } = require('../telemetry-client');
-const { trackVacationShared } = require('../analytics');
+const { describe, test, beforeEach } = require('node:test');
+const assert = require('node:assert/strict');
+const { trackVacationShared } = require('../shareEvents.js');
 
 const PII_KEYS = [
   'location',
@@ -21,28 +16,33 @@ const PII_KEYS = [
 ];
 
 describe('trackVacationShared', () => {
+  let calls;
+  function mockTrack(eventName, metadata) {
+    calls.push([eventName, metadata]);
+  }
+
   beforeEach(() => {
-    mockTrack.mockClear();
+    calls = [];
   });
 
   test('emits exactly one vp_vacation_shared with photos and is_north_star', () => {
-    trackVacationShared(12);
+    trackVacationShared(12, mockTrack);
 
-    expect(mockTrack).toHaveBeenCalledTimes(1);
-    const [eventName, metadata] = mockTrack.mock.calls[0];
-    expect(eventName).toBe('vp_vacation_shared');
-    expect(metadata).toEqual({
+    assert.equal(calls.length, 1);
+    const [eventName, metadata] = calls[0];
+    assert.equal(eventName, 'vp_vacation_shared');
+    assert.deepEqual(metadata, {
       photos: 12,
       is_north_star: 'true',
     });
   });
 
   test('payload has no PII keys', () => {
-    trackVacationShared(3);
+    trackVacationShared(3, mockTrack);
 
-    const metadata = mockTrack.mock.calls[0][1];
+    const metadata = calls[0][1];
     for (const key of PII_KEYS) {
-      expect(metadata).not.toHaveProperty(key);
+      assert.ok(!Object.prototype.hasOwnProperty.call(metadata, key));
     }
   });
 });
