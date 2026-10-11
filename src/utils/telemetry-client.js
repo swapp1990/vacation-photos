@@ -99,6 +99,8 @@ function detectEnvironment() {
 // --- Anonymous Device ID ---
 // Persisted UUID per install via AsyncStorage (Constants.installationId is deprecated)
 let cachedDeviceId = null;
+let cachedInstalledAt = null;
+let pendingEvents = [];
 
 async function loadDeviceId() {
   if (cachedDeviceId) return cachedDeviceId;
@@ -113,10 +115,32 @@ async function loadDeviceId() {
       await AsyncStorage.setItem('_sa_device_id', id);
     }
     cachedDeviceId = id;
+    await loadInstalledAt();
     return id;
   } catch (e) {
     return 'unknown';
   }
+}
+
+async function loadInstalledAt() {
+  if (cachedInstalledAt) return cachedInstalledAt;
+  try {
+    const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+    let ts = await AsyncStorage.getItem('_sa_installed_at');
+    if (!ts) {
+      ts = String(Date.now());
+      await AsyncStorage.setItem('_sa_installed_at', ts);
+    }
+    cachedInstalledAt = Number(ts);
+    return cachedInstalledAt;
+  } catch (e) {
+    cachedInstalledAt = Date.now();
+    return cachedInstalledAt;
+  }
+}
+
+export async function getInstalledAt() {
+  return loadInstalledAt();
 }
 
 // --- Core SDK ---
@@ -135,6 +159,9 @@ export async function initAnalytics(appId = 'lmwfy') {
       deviceId,
     };
     console.log(`[Analytics] Initialized: app=${config.appId} env=${config.environment} device=${config.deviceId.substring(0, 8)}`);
+    const queued = pendingEvents;
+    pendingEvents = [];
+    queued.forEach(({ eventName, metadata }) => track(eventName, metadata));
   } catch (error) {
     console.warn('[Analytics] Failed to initialize:', error);
   }
@@ -142,11 +169,11 @@ export async function initAnalytics(appId = 'lmwfy') {
 
 /**
  * Track an event with optional metadata.
- * Silently no-ops if not initialized.
+ * Queues events until init completes, then flushes.
  */
 export function track(eventName, metadata = {}) {
   if (!config) {
-    console.warn('[Analytics] Not initialized, skipping:', eventName);
+    pendingEvents.push({ eventName, metadata });
     return;
   }
 

@@ -21,7 +21,7 @@ import { colors, spacing, typography, borderRadius } from '../styles/theme';
 import { shareVacationCluster, MAX_PHOTOS, getUserDisplayName, setUserDisplayName, getUploadedVacations, getClusterKey } from '../services/photoUploadService';
 import { checkCloudKitAvailability, generateShareLink } from '../services/cloudKitService';
 import { track, trackNorthStar, Events } from '../utils/analytics';
-import { recordPositiveMoment } from '../utils/reviewPrompt';
+import { considerRatingPrompt } from '../utils/reviewPrompt';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const PREVIEW_PHOTO_SIZE = 80;
@@ -90,7 +90,8 @@ export default function ShareModal({ visible, onClose, cluster, onShareComplete 
     const shareMessage = `${userName} shared ${locationName}! 🌴\n${dateRange} · ${shareResult.photosUploaded} photos\n\nTap to view instantly (no download needed):\n${shareResult.shareLink}`;
 
     Clipboard.setString(shareMessage);
-    track(Events.SHARE_LINK_COPIED, { location: locationName });
+    track(Events.SHARE_LINK_COPIED);
+    considerRatingPrompt('share_success');
     Alert.alert('Copied!', 'Link copied to clipboard');
   };
 
@@ -265,9 +266,9 @@ export default function ShareModal({ visible, onClose, cluster, onShareComplete 
         // Notify parent that share completed (for updating upload status indicators)
         onShareComplete?.();
         // Track share analytics + north star + positive moment for review prompt
-        track(Events.VACATION_SHARED, { location: locationName, photos: photosToShare });
-        trackNorthStar({ location: locationName });
-        recordPositiveMoment();
+        track(Events.VACATION_SHARED, { photos: photosToShare });
+        trackNorthStar({ photos: photosToShare });
+        considerRatingPrompt('share_success');
         // Go to contacts screen to select who to send to
         setScreen(SCREEN.CONTACTS);
         loadContacts();
@@ -301,7 +302,8 @@ export default function ShareModal({ visible, onClose, cluster, onShareComplete 
 
       if (canOpen) {
         await Linking.openURL(whatsappUrl);
-        track(Events.SHARE_MESSAGE_SENT, { channel: 'whatsapp', location: locationName });
+        track(Events.SHARE_MESSAGE_SENT, { channel: 'whatsapp' });
+        considerRatingPrompt('share_success');
         onClose();
       } else {
         Alert.alert(
@@ -314,7 +316,8 @@ export default function ShareModal({ visible, onClose, cluster, onShareComplete 
               onPress: () => {
                 const smsUrl = `sms:${phoneNumber}&body=${encodeURIComponent(shareMessage)}`;
                 Linking.openURL(smsUrl);
-                track(Events.SHARE_MESSAGE_SENT, { channel: 'sms', location: locationName });
+                track(Events.SHARE_MESSAGE_SENT, { channel: 'sms' });
+                considerRatingPrompt('share_success');
                 onClose();
               },
             },
