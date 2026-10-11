@@ -4,13 +4,15 @@ const {
   decideRatingPrompt,
   COOLDOWN_MS,
   localCalendarDay,
+  shouldDeferReviewRequest,
+  consumePendingReview,
+  SHARE_REVIEW_IDLE_DELAY_MS,
+  SHARE_REVIEW_MAX_WAIT_MS,
 } = require('../reviewPromptDecision.js');
 const { sha256hex, hashShareId } = require('../hashShareId.js');
 
 const NOW = 1_800_000_000_000;
 const VERSION = '1.1.8';
-const DAY_A = '2026-01-01';
-const DAY_B = '2026-01-10';
 
 function decide(overrides = {}) {
   const { state: stateOverrides, ...rest } = overrides;
@@ -18,161 +20,149 @@ function decide(overrides = {}) {
     state: {
       lastPromptAt: null,
       lastPromptVersion: null,
-      distinctDays: [DAY_A],
       tripOpenCounts: {},
       ...stateOverrides,
     },
-    trigger: 'share_success',
+    trigger: 'first_share',
     now: NOW,
     appVersion: VERSION,
     storeKitAvailable: true,
-    calendarDay: DAY_B,
     ...rest,
   });
 }
 
 describe('decideRatingPrompt truth table', () => {
-  test('launch never prompts (threshold)', () => {
-    const d = decide({ trigger: 'launch' });
-    assert.equal(d.action, 'skip');
-    assert.equal(d.reason, 'threshold');
-  });
-
-  test('other never prompts (threshold)', () => {
-    const d = decide({ trigger: 'other' });
-    assert.equal(d.action, 'skip');
-    assert.equal(d.reason, 'threshold');
-  });
-
-  test('missing trigger never prompts (threshold)', () => {
-    const d = decide({ trigger: undefined });
-    assert.equal(d.action, 'skip');
-    assert.equal(d.reason, 'threshold');
-  });
-
-  test('share_success on one calendar day is day_gate', () => {
-    const d = decide({
-      state: { distinctDays: [] },
-      calendarDay: DAY_A,
-      trigger: 'share_success',
-    });
-    assert.equal(d.action, 'skip');
-    assert.equal(d.reason, 'day_gate');
-    assert.deepEqual(d.nextState.distinctDays, [DAY_A]);
-  });
-
-  test('share_success on 2 distinct days prompts', () => {
-    const d = decide({ trigger: 'share_success' });
+  test('first share on day 0 prompts with trigger first_share', () => {
+    const d = decide({ trigger: 'first_share' });
     assert.equal(d.action, 'prompt');
     assert.equal(d.reason, null);
-    assert.deepEqual(d.nextState.distinctDays, [DAY_A, DAY_B]);
+    assert.equal(d.promptTrigger, 'first_share');
   });
 
-  test('share_success with StoreKit unavailable', () => {
-    const d = decide({ trigger: 'share_success', storeKitAvailable: false });
-    assert.equal(d.action, 'skip');
-    assert.equal(d.reason, 'unavailable');
-  });
-
-  test('share_success within 90-day cooldown', () => {
+  test('second open of the same trip on day 0 prompts with trigger second_open', () => {
     const d = decide({
-      trigger: 'share_success',
-      state: { lastPromptAt: NOW - COOLDOWN_MS + 1, distinctDays: [DAY_A] },
-    });
-    assert.equal(d.action, 'skip');
-    assert.equal(d.reason, 'cooldown');
-  });
-
-  test('share_success after cooldown expires can prompt', () => {
-    const d = decide({
-      trigger: 'share_success',
-      state: { lastPromptAt: NOW - COOLDOWN_MS, lastPromptVersion: '1.1.7', distinctDays: [DAY_A] },
+      trigger: 'trip_open',
+      tripId: 'cluster-0',
+      state: { tripOpenCounts: { 'cluster-0': 1 } },
     });
     assert.equal(d.action, 'prompt');
+    assert.equal(d.reason, null);
+    assert.equal(d.promptTrigger, 'second_open');
+    assert.equal(d.nextState.tripOpenCounts['cluster-0'], 2);
   });
 
-  test('share_success same app version is version_gate after cooldown', () => {
+  test('second share same version after a prompt is version_gate', () => {
+    const first = decide({ trigger: 'first_share' });
+    assert.equal(first.action, 'prompt');
     const d = decide({
-      trigger: 'share_success',
+      trigger: 'first_share',
       state: {
+        ...first.nextState,
         lastPromptAt: NOW - COOLDOWN_MS,
         lastPromptVersion: VERSION,
-        distinctDays: [DAY_A],
       },
     });
     assert.equal(d.action, 'skip');
     assert.equal(d.reason, 'version_gate');
   });
 
-  test('share_success new version still in cooldown prefers cooldown', () => {
+  test('within 90 days of a previous prompt on a different version is cooldown', () => {
     const d = decide({
-      trigger: 'share_success',
+      trigger: 'first_share',
       appVersion: '1.1.9',
       state: {
         lastPromptAt: NOW - 1000,
         lastPromptVersion: VERSION,
-        distinctDays: [DAY_A],
       },
     });
     assert.equal(d.action, 'skip');
     assert.equal(d.reason, 'cooldown');
   });
 
-  test('share_success new version after cooldown prompts', () => {
+  test('launch never prompts (no_trigger)', () => {
+    const d = decide({ trigger: 'launch' });
+    assert.equal(d.action, 'skip');
+    assert.equal(d.reason, 'no_trigger');
+  });
+
+  test('other never prompts (no_trigger)', () => {
+    const d = decide({ trigger: 'other' });
+    assert.equal(d.action, 'skip');
+    assert.equal(d.reason, 'no_trigger');
+  });
+
+  test('missing trigger never prompts (no_trigger)', () => {
+    const d = decide({ trigger: undefined });
+    assert.equal(d.action, 'skip');
+    assert.equal(d.reason, 'no_trigger');
+  });
+
+  test('first open of a trip is no_trigger', () => {
     const d = decide({
-      trigger: 'share_success',
+      trigger: 'trip_open',
+      tripId: 'cluster-0',
+    });
+    assert.equal(d.action, 'skip');
+    assert.equal(d.reason, 'no_trigger');
+    assert.equal(d.nextState.tripOpenCounts['cluster-0'], 1);
+    assert.equal(d.promptTrigger, null);
+  });
+
+  test('StoreKit unavailable', () => {
+    const d = decide({ trigger: 'first_share', storeKitAvailable: false });
+    assert.equal(d.action, 'skip');
+    assert.equal(d.reason, 'unavailable');
+  });
+
+  test('second open of a different trip is no_trigger', () => {
+    const d = decide({
+      trigger: 'trip_open',
+      tripId: 'cluster-1',
+      state: { tripOpenCounts: { 'cluster-0': 1 } },
+    });
+    assert.equal(d.action, 'skip');
+    assert.equal(d.reason, 'no_trigger');
+    assert.equal(d.nextState.tripOpenCounts['cluster-1'], 1);
+    assert.equal(d.nextState.tripOpenCounts['cluster-0'], 1);
+  });
+
+  test('first_share after cooldown expires can prompt', () => {
+    const d = decide({
+      trigger: 'first_share',
+      state: { lastPromptAt: NOW - COOLDOWN_MS, lastPromptVersion: '1.1.7' },
+    });
+    assert.equal(d.action, 'prompt');
+    assert.equal(d.promptTrigger, 'first_share');
+  });
+
+  test('first_share immediately after a prompt prefers cooldown', () => {
+    const d = decide({
+      trigger: 'first_share',
+      state: {
+        lastPromptAt: NOW,
+        lastPromptVersion: VERSION,
+      },
+    });
+    assert.equal(d.action, 'skip');
+    assert.equal(d.reason, 'cooldown');
+  });
+
+  test('first_share new version after cooldown prompts', () => {
+    const d = decide({
+      trigger: 'first_share',
       appVersion: '1.1.9',
       state: {
         lastPromptAt: NOW - COOLDOWN_MS,
         lastPromptVersion: VERSION,
-        distinctDays: [DAY_A],
       },
     });
     assert.equal(d.action, 'prompt');
   });
 
-  test('first trip_open is threshold even with 2 days', () => {
-    const d = decide({
-      trigger: 'trip_open',
-      tripId: 'cluster-0',
-    });
+  test('trip_open without tripId is no_trigger', () => {
+    const d = decide({ trigger: 'trip_open' });
     assert.equal(d.action, 'skip');
-    assert.equal(d.reason, 'threshold');
-    assert.equal(d.nextState.tripOpenCounts['cluster-0'], 1);
-  });
-
-  test('second trip_open of the same trip prompts', () => {
-    const d = decide({
-      trigger: 'trip_open',
-      tripId: 'cluster-0',
-      state: { distinctDays: [DAY_A], tripOpenCounts: { 'cluster-0': 1 } },
-    });
-    assert.equal(d.action, 'prompt');
-    assert.equal(d.nextState.tripOpenCounts['cluster-0'], 2);
-  });
-
-  test('second open of a different trip is still threshold', () => {
-    const d = decide({
-      trigger: 'trip_open',
-      tripId: 'cluster-1',
-      state: { distinctDays: [DAY_A], tripOpenCounts: { 'cluster-0': 1 } },
-    });
-    assert.equal(d.action, 'skip');
-    assert.equal(d.reason, 'threshold');
-    assert.equal(d.nextState.tripOpenCounts['cluster-1'], 1);
-    assert.equal(d.nextState.tripOpenCounts['cluster-0'], 1);
-  });
-
-  test('second trip_open on a single calendar day is day_gate', () => {
-    const d = decide({
-      trigger: 'trip_open',
-      tripId: 'cluster-0',
-      calendarDay: DAY_A,
-      state: { distinctDays: [DAY_A], tripOpenCounts: { 'cluster-0': 1 } },
-    });
-    assert.equal(d.action, 'skip');
-    assert.equal(d.reason, 'day_gate');
-    assert.equal(d.nextState.tripOpenCounts['cluster-0'], 2);
+    assert.equal(d.reason, 'no_trigger');
   });
 
   test('second trip_open with StoreKit unavailable', () => {
@@ -180,7 +170,7 @@ describe('decideRatingPrompt truth table', () => {
       trigger: 'trip_open',
       tripId: 'cluster-0',
       storeKitAvailable: false,
-      state: { distinctDays: [DAY_A], tripOpenCounts: { 'cluster-0': 1 } },
+      state: { tripOpenCounts: { 'cluster-0': 1 } },
     });
     assert.equal(d.action, 'skip');
     assert.equal(d.reason, 'unavailable');
@@ -192,7 +182,6 @@ describe('decideRatingPrompt truth table', () => {
       tripId: 'cluster-0',
       state: {
         lastPromptAt: NOW - 1000,
-        distinctDays: [DAY_A],
         tripOpenCounts: { 'cluster-0': 1 },
       },
     });
@@ -207,7 +196,6 @@ describe('decideRatingPrompt truth table', () => {
       state: {
         lastPromptAt: NOW - COOLDOWN_MS,
         lastPromptVersion: VERSION,
-        distinctDays: [DAY_A],
         tripOpenCounts: { 'cluster-0': 1 },
       },
     });
@@ -215,45 +203,94 @@ describe('decideRatingPrompt truth table', () => {
     assert.equal(d.reason, 'version_gate');
   });
 
-  test('trip_open without tripId is threshold', () => {
-    const d = decide({ trigger: 'trip_open' });
-    assert.equal(d.action, 'skip');
-    assert.equal(d.reason, 'threshold');
-  });
-
-  test('unavailable wins over day_gate', () => {
+  test('unavailable wins over cooldown', () => {
     const d = decide({
-      trigger: 'share_success',
+      trigger: 'first_share',
       storeKitAvailable: false,
-      state: { distinctDays: [] },
-      calendarDay: DAY_A,
+      state: { lastPromptAt: NOW - 1000, lastPromptVersion: '1.1.7' },
     });
     assert.equal(d.reason, 'unavailable');
   });
 
-  test('records today even when skipping', () => {
+  test('cooldown wins over version_gate', () => {
     const d = decide({
-      trigger: 'share_success',
-      state: { distinctDays: [] },
-      calendarDay: DAY_B,
+      trigger: 'first_share',
+      state: {
+        lastPromptAt: NOW - 1000,
+        lastPromptVersion: VERSION,
+      },
     });
-    assert.equal(d.reason, 'day_gate');
-    assert.ok(d.nextState.distinctDays.includes(DAY_B));
+    assert.equal(d.reason, 'cooldown');
   });
 
-  test('two injected local calendar days satisfy the day gate', () => {
-    const first = decide({
-      trigger: 'share_success',
-      state: { distinctDays: [] },
-      calendarDay: DAY_A,
+  test('version_gate wins over no_trigger', () => {
+    const d = decide({
+      trigger: 'trip_open',
+      tripId: 'cluster-0',
+      state: {
+        lastPromptAt: NOW - COOLDOWN_MS,
+        lastPromptVersion: VERSION,
+      },
     });
-    const second = decide({
-      trigger: 'share_success',
-      state: first.nextState,
-      calendarDay: DAY_B,
+    assert.equal(d.action, 'skip');
+    assert.equal(d.reason, 'version_gate');
+    assert.equal(d.nextState.tripOpenCounts['cluster-0'], 1);
+  });
+
+  test('old distinctDays in persisted state is ignored', () => {
+    const d = decide({
+      trigger: 'first_share',
+      state: { distinctDays: ['2026-01-01'] },
     });
-    assert.equal(first.reason, 'day_gate');
-    assert.equal(second.action, 'prompt');
+    assert.equal(d.action, 'prompt');
+    assert.equal(d.promptTrigger, 'first_share');
+    assert.equal(d.nextState.distinctDays, undefined);
+  });
+
+  test('nextState never records distinctDays', () => {
+    const d = decide({ trigger: 'launch' });
+    assert.ok(!Object.prototype.hasOwnProperty.call(d.nextState, 'distinctDays'));
+  });
+});
+
+describe('shouldDeferReviewRequest', () => {
+  test('first_share is deferred until share UI is gone', () => {
+    assert.equal(shouldDeferReviewRequest('first_share'), true);
+  });
+
+  test('second_open is not deferred', () => {
+    assert.equal(shouldDeferReviewRequest('second_open'), false);
+  });
+});
+
+describe('consumePendingReview', () => {
+  test('no pending is a noop', () => {
+    const r = consumePendingReview({ pending: false, appState: 'active' });
+    assert.equal(r.action, 'noop');
+    assert.equal(r.idleDelayMs, 0);
+  });
+
+  test('pending while background waits for foreground', () => {
+    const r = consumePendingReview({ pending: true, appState: 'background' });
+    assert.equal(r.action, 'wait');
+  });
+
+  test('pending while inactive waits for foreground', () => {
+    const r = consumePendingReview({ pending: true, appState: 'inactive' });
+    assert.equal(r.action, 'wait');
+  });
+
+  test('pending while active flushes with a short idle delay', () => {
+    const r = consumePendingReview({ pending: true, appState: 'active' });
+    assert.equal(r.action, 'flush');
+    assert.ok(r.idleDelayMs > 0);
+    assert.ok(r.idleDelayMs <= 1000);
+    assert.equal(r.idleDelayMs, SHARE_REVIEW_IDLE_DELAY_MS);
+  });
+
+  test('max wait is a few seconds', () => {
+    assert.ok(SHARE_REVIEW_MAX_WAIT_MS >= 2000);
+    assert.ok(SHARE_REVIEW_MAX_WAIT_MS <= 8000);
   });
 });
 

@@ -2,12 +2,14 @@
  * Pure rating-prompt decision. Inject clock, version, StoreKit flag, and
  * persisted state so this can be unit-tested without React Native.
  *
- * Skip-reason priority: unavailable, cooldown, version_gate, day_gate, threshold.
- * Launch / other triggers never prompt (threshold).
+ * Skip-reason priority: unavailable, cooldown, version_gate, no_trigger.
+ * Launch / other triggers never prompt (no_trigger).
+ * first_share StoreKit request is deferred until the share UI is gone.
  */
 
 export const COOLDOWN_MS = 90 * 24 * 60 * 60 * 1000;
-export const MIN_DISTINCT_DAYS = 2;
+export const SHARE_REVIEW_IDLE_DELAY_MS = 800;
+export const SHARE_REVIEW_MAX_WAIT_MS = 4000;
 
 export function localCalendarDay(ms) {
   const d = new Date(ms);
@@ -18,14 +20,38 @@ export function localCalendarDay(ms) {
 }
 
 /**
+ * first_share waits for ShareModal / Messages to leave the screen.
+ * second_open fires immediately (trip detail is already the app UI).
+ */
+export function shouldDeferReviewRequest(promptTrigger) {
+  return promptTrigger === 'first_share';
+}
+
+/**
+ * Consume a pending first_share StoreKit request.
+ * Keep waiting while the app is backgrounded (WhatsApp / Messages).
+ *
+ * @param {{ pending: boolean, appState?: string }} params
+ * @returns {{ action: 'noop'|'wait'|'flush', idleDelayMs: number }}
+ */
+export function consumePendingReview({ pending, appState } = {}) {
+  if (!pending) {
+    return { action: 'noop', idleDelayMs: 0 };
+  }
+  if (appState && appState !== 'active') {
+    return { action: 'wait', idleDelayMs: 0 };
+  }
+  return { action: 'flush', idleDelayMs: SHARE_REVIEW_IDLE_DELAY_MS };
+}
+
+/**
  * @param {object} params
  * @param {object} params.state
- * @param {string} params.trigger  share_success | trip_open | launch | other
+ * @param {string} params.trigger  first_share | trip_open | launch | other
  * @param {string} [params.tripId]
  * @param {number} params.now
  * @param {string} params.appVersion
  * @param {boolean} params.storeKitAvailable
- * @param {string} [params.calendarDay]  YYYY-MM-DD local; defaults from now
  */
 export function decideRatingPrompt({
   state = {},
@@ -34,28 +60,28 @@ export function decideRatingPrompt({
   now,
   appVersion,
   storeKitAvailable,
-  calendarDay,
 } = {}) {
-  const day = calendarDay || localCalendarDay(now);
-  const distinctDays = new Set(state.distinctDays || []);
-  if (day) distinctDays.add(day);
-
   const tripOpenCounts = { ...(state.tripOpenCounts || {}) };
   if (trigger === 'trip_open' && tripId) {
     tripOpenCounts[tripId] = (tripOpenCounts[tripId] || 0) + 1;
   }
 
+  // Old distinctDays keys are ignored; do not copy them forward.
   const nextState = {
     lastPromptAt: state.lastPromptAt || null,
     lastPromptVersion: state.lastPromptVersion || null,
-    distinctDays: [...distinctDays].sort(),
     tripOpenCounts,
   };
 
-  const skip = (reason) => ({ action: 'skip', reason, nextState });
+  const skip = (reason) => ({
+    action: 'skip',
+    reason,
+    nextState,
+    promptTrigger: null,
+  });
 
   if (trigger === 'launch' || trigger === 'other' || !trigger) {
-    return skip('threshold');
+    return skip('no_trigger');
   }
 
   if (!storeKitAvailable) {
@@ -70,20 +96,16 @@ export function decideRatingPrompt({
     return skip('version_gate');
   }
 
-  if (distinctDays.size < MIN_DISTINCT_DAYS) {
-    return skip('day_gate');
-  }
-
-  let triggerMet = false;
-  if (trigger === 'share_success') {
-    triggerMet = true;
+  let promptTrigger = null;
+  if (trigger === 'first_share') {
+    promptTrigger = 'first_share';
   } else if (trigger === 'trip_open' && tripId && tripOpenCounts[tripId] >= 2) {
-    triggerMet = true;
+    promptTrigger = 'second_open';
   }
 
-  if (!triggerMet) {
-    return skip('threshold');
+  if (!promptTrigger) {
+    return skip('no_trigger');
   }
 
-  return { action: 'prompt', reason: null, nextState };
+  return { action: 'prompt', reason: null, nextState, promptTrigger };
 }
