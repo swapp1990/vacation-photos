@@ -54,6 +54,11 @@ export function trackNorthStar(metadata = {}) {
   });
 }
 
+/** Successful share: one vp_vacation_shared with is_north_star. */
+export function trackVacationShared(photos) {
+  trackNorthStar({ photos });
+}
+
 export { hashShareId };
 
 function parseLocalDay(day) {

@@ -20,7 +20,7 @@ import { StyleSheet } from 'react-native';
 import { colors, spacing, typography, borderRadius } from '../styles/theme';
 import { shareVacationCluster, MAX_PHOTOS, getUserDisplayName, setUserDisplayName, getUploadedVacations, getClusterKey } from '../services/photoUploadService';
 import { checkCloudKitAvailability, generateShareLink } from '../services/cloudKitService';
-import { track, trackNorthStar, Events } from '../utils/analytics';
+import { track, trackVacationShared, Events } from '../utils/analytics';
 import { considerRatingPrompt } from '../utils/reviewPrompt';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -265,9 +265,8 @@ export default function ShareModal({ visible, onClose, cluster, onShareComplete 
         setShareResult(result);
         // Notify parent that share completed (for updating upload status indicators)
         onShareComplete?.();
-        // Track share analytics + north star + positive moment for review prompt
-        track(Events.VACATION_SHARED, { photos: photosToShare });
-        trackNorthStar({ photos: photosToShare });
+        // Track share as the north-star event + positive moment for review prompt
+        trackVacationShared(photosToShare);
         considerRatingPrompt('share_success');
         // Go to contacts screen to select who to send to
         setScreen(SCREEN.CONTACTS);
